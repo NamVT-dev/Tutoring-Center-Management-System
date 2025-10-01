@@ -15,24 +15,26 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       validate: [validator.isEmail, "Email không hợp lệ"],
     },
-    photo: {
-      type: String,
-      default:
-        "https://res.cloudinary.com/dmskqrjiu/image/upload/v1742210170/users/default.jpg.jpg",
-    },
-    phoneNumber: {
-      type: String,
-      unique: true,
-      required: [true, "Xin hãy cung cấp số điện thoại của bạn"],
-      validate: [validator.isMobilePhone, "Số điện thoại không hợp lệ"],
-    },
-    dob: {
-      type: Date,
-      required: [true, "Xin hãy cung cấp ngày sinh"],
-    },
-    gender: {
-      type: String,
-      enum: ["male", "female"],
+    profile: {
+      photo: {
+        type: String,
+        default:
+          "https://res.cloudinary.com/dmskqrjiu/image/upload/v1742210170/users/default.jpg.jpg",
+      },
+      phoneNumber: {
+        type: String,
+        unique: true,
+        required: [true, "Xin hãy cung cấp số điện thoại của bạn"],
+        validate: [validator.isMobilePhone, "Số điện thoại không hợp lệ"],
+      },
+      dob: {
+        type: Date,
+        required: [true, "Xin hãy cung cấp ngày sinh"],
+      },
+      gender: {
+        type: String,
+        enum: ["male", "female"],
+      },
     },
     student: {
       type: [mongoose.Schema.ObjectId],
