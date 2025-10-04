@@ -1,5 +1,9 @@
 const mongoose = require("mongoose");
 const validator = require("validator");
+const bcrypt = require("bcryptjs");
+const crypto = require("node:crypto");
+
+const { generateRandomPin } = require("../utils/passwordUtils");
 
 const userSchema = new mongoose.Schema(
   {
@@ -16,6 +20,10 @@ const userSchema = new mongoose.Schema(
       validate: [validator.isEmail, "Email không hợp lệ"],
     },
     profile: {
+      fullname: {
+        type: String,
+        require: [true, "Xin hãy cung cấp tên của bạn"],
+      },
       photo: {
         type: String,
         default:
@@ -80,7 +88,10 @@ const userSchema = new mongoose.Schema(
     passwordChangedAt: Date,
     passwordResetToken: String,
     passwordResetExpires: Date,
-    confirmPin: String,
+    confirmPin: {
+      type: String,
+      select: false,
+    },
     confirmPinExpires: Date,
     active: {
       type: Boolean,
@@ -92,6 +103,81 @@ const userSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+userSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
+
+  this.password = await bcrypt.hash(this.password, 12);
+
+  this.passwordConfirm = undefined;
+  next();
+});
+
+userSchema.pre("save", function (next) {
+  if (!this.isModified("password") || this.isNew) return next();
+
+  this.passwordChangedAt = Date.now() - 1000;
+  next();
+});
+
+userSchema.methods.correctPassword = async function (
+  candidatePassword,
+  userPassword
+) {
+  return await bcrypt.compare(candidatePassword, userPassword);
+};
+
+userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
+  if (this.passwordChangedAt) {
+    const changedTimestamp = parseInt(
+      this.passwordChangedAt.getTime() / 1000,
+      10
+    );
+
+    return JWTTimestamp < changedTimestamp;
+  }
+
+  // False means NOT changed
+  return false;
+};
+
+userSchema.methods.createConfirmPin = function () {
+  const confirmPin = generateRandomPin(6);
+  this.confirmPin = crypto
+    .createHash("sha256")
+    .update(confirmPin)
+    .digest("hex");
+
+  this.confirmPinExpires = Date.now() + 10 * 60 * 1000;
+
+  return confirmPin;
+};
+
+userSchema.methods.confirmEmail = function (pin) {
+  const hashedPin = crypto.createHash("sha256").update(pin).digest("hex");
+
+  if (hashedPin !== this.confirmPin || Date.now() > this.confirmPinExpires)
+    return false;
+
+  this.active = true;
+  this.confirmPin = undefined;
+  this.confirmPinExpires = undefined;
+
+  return true;
+};
+
+userSchema.methods.createPasswordResetToken = function () {
+  const resetToken = crypto.randomBytes(32).toString("hex");
+
+  this.passwordResetToken = crypto
+    .createHash("sha256")
+    .update(resetToken)
+    .digest("hex");
+
+  this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
+
+  return resetToken;
+};
 const User = mongoose.model("User", userSchema, "users");
 
 module.exports = User;
