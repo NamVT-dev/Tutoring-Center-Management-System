@@ -1,0 +1,22 @@
+extends baseEmail
+
+block content
+  p Xin chào #{firstName},
+  p Chào mừng đến với TutorCenter, chúng tôi rất vui khi có bạn tham gia 🎉🙏
+  p Xin hãy cập nhật ảnh đại diện để chúng tôi biết bạn rõ hơn!
+  table.btn.btn-primary(role='presentation', border='0', cellpadding='0', cellspacing='0')
+    tbody
+      tr
+        td(align='left')
+          table(role='presentation', border='0', cellpadding='0', cellspacing='0')
+            tbody
+              tr
+                td
+                  a(href=`${url}`, target='_blank') Cập nhật ảnh đại diện
+  p Nếu bạn cần hỗ trợ thêm, vui lòng liên hệ bộ phận hỗ trợ khách hàng của chúng tôi:
+  ul
+    li 📞 Hotline: 1900 123 456
+    li 📧 Email: 
+    li 🌐 Website: 
+  p Trân trọng,
+  p Đội ngũ hỗ trợ TutorCenter
