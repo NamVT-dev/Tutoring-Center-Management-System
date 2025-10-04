@@ -98,7 +98,6 @@ exports.signup = catchAsync(async (req, res, next) => {
   } catch (err) {
     newUser.confirmPin = undefined;
     await newUser.save({ validateBeforeSave: false });
-    console.log(err);
     return next(new AppError("Có lỗi khi gửi email. Hãy thử lại sau!"), 500);
   }
 });
