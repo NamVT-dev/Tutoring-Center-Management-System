@@ -5,6 +5,18 @@ const crypto = require("node:crypto");
 
 const { generateRandomPin } = require("../utils/passwordUtils");
 
+const availabilitySchema = new mongoose.Schema({
+  // 0=CN ... 6=Thứ 7
+  // 0=00h00 ... 1439=23x60 + 59
+  dayOfWeek: { type: Number, min: 0, max: 6, required: true },
+  startMinute: { type: Number, min: 0, max: 1439, required: true },
+  endMinute:   { type: Number, min: 1, max: 1440, required: true },
+  effective: {
+    start: Date,
+    end: Date
+  }
+}, { _id: false });
+
 const userSchema = new mongoose.Schema(
   {
     username: {
@@ -53,18 +65,20 @@ const userSchema = new mongoose.Schema(
       enum: ["student", "admin", "teacher", "parent"],
       default: "student",
     },
-    class: {
-      type: [String],
-    },
+    class: [{ 
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Class" 
+    }],
     level: {
       type: String,
     },
     salary: {
       type: [String],
     },
-    avaiable: {
-      type: String,
-    },
+    availability: [availabilitySchema],
+    maxHoursPerDay: Number,
+    maxHoursPerWeek: Number,
+
     password: {
       type: String,
       required: [true, "Xin hãy đặt mật khẩu"],
