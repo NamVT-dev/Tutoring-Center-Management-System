@@ -14,10 +14,11 @@ const courseSchema = new mongoose.Schema({
   level: {
     type: String,
   },
-  session: Number,
-  duration: Number,
+  session: { type: Number, required: true },
+  durationInMinutes: { type: Number, required: true },
   imageCover: String,
 });
+courseSchema.index({ level: 1, category: 1 });
 const Course = mongoose.model("Course", courseSchema, "courses");
 
 module.exports = Course;
