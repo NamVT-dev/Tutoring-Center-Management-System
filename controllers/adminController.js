@@ -37,7 +37,20 @@ const getListTeacher = catchAsync(async(req,res)=>{
     })
 });
 
+const getTeacherDetail = catchAsync(async(req,res,next) =>{
+    const teacher = await User.findOne({_id:req.params.id})
+    .select("-password -confirmPin -passwordResetToken -student")
+    .lean();
+
+    if(!teacher) return next(new AppError("Không tìm được giáo viên!",404));
+
+    res.status(200).json({
+        status:"success",
+        data:{teacher}
+    })
+});
 
 module.exports={
-    getListTeacher
+    getListTeacher,
+    getTeacherDetail
 }
