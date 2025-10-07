@@ -48,7 +48,7 @@ const getTeacherDetail = catchAsync(async(req,res,next) =>{
         status:"success",
         data:{teacher}
     })
-});
+}); 
 
 module.exports={
     getListTeacher,
