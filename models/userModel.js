@@ -33,7 +33,7 @@ const userSchema = new mongoose.Schema(
     profile: {
       fullname: {
         type: String,
-        require: [true, "Xin hãy cung cấp tên của bạn"],
+        required: [true, "Xin hãy cung cấp tên của bạn"],
       },
       photo: {
         type: String,

@@ -25,7 +25,7 @@ const oneOffScheduleSchema = new mongoose.Schema({
 const classSchema = new mongoose.Schema({
   name: {
     type: String,
-    require: true,
+    required: true,
     unique: true,
   },
   course: {
