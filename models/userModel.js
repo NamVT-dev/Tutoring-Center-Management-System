@@ -9,8 +9,7 @@ const availabilitySchema = new mongoose.Schema({
   // 0=CN ... 6=Thứ 7
   // 0=00h00 ... 1439=23x60 + 59
   dayOfWeek: { type: Number, min: 0, max: 6, required: true },
-  startMinute: { type: Number, min: 0, max: 1439, required: true },
-  endMinute:   { type: Number, min: 1, max: 1440, required: true },
+  allowed:   { type: Boolean, default: true },
   effective: {
     start: Date,
     end: Date
@@ -34,7 +33,7 @@ const userSchema = new mongoose.Schema(
     profile: {
       fullname: {
         type: String,
-        require: [true, "Xin hãy cung cấp tên của bạn"],
+        required: [true, "Xin hãy cung cấp tên của bạn"],
       },
       photo: {
         type: String,
