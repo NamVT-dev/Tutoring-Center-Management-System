@@ -3,7 +3,12 @@ const adminController = require("../controllers/adminController");
 const roomctrl = require("../controllers/roomController");
 const courseCtrl = require("../controllers/courseController");
 const centerCtrl = require("../controllers/centerController");
+const authCtrl = require("../controllers/authController");
 const route = express.Router();
+
+//auth for admin 
+route.use(authCtrl.protect);
+route.use(authCtrl.restrictTo("admin"));
 //quan ly giao vien
 route.get("/teachers", adminController.getListTeacher);
 route.get("/teachers/:id",adminController.getTeacherDetail);
