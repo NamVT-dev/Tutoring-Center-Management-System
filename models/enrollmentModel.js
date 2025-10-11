@@ -9,8 +9,13 @@ const enrollmentSchema = new mongoose.Schema({
     type: mongoose.Schema.ObjectId,
     ref: "Course",
   },
-  class:   { type: mongoose.Schema.Types.ObjectId, ref: "Class",  required: true, index: true },
-  status:  { type: String, default: "active"},
+  class: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Class",
+    required: true,
+    index: true,
+  },
+  status: { type: String, default: "active" },
 });
 const Enrollment = mongoose.model(
   "Enrollment",
