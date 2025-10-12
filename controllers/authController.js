@@ -4,7 +4,7 @@ const { promisify } = require("node:util");
 const crypto = require("node:crypto");
 const jwt = require("jsonwebtoken");
 
-const User = require("../models/userModel");
+const { Student, User, Parent } = require("../models/userModel");
 const catchAsync = require("../utils/catchAsync");
 const AppError = require("../utils/appError");
 const Email = require("../utils/email");
@@ -83,6 +83,7 @@ exports.signup = catchAsync(async (req, res, next) => {
       dob: req.body.dob,
       fullname: req.body.name,
     },
+    role: req.body.role,
     password: req.body.password,
     passwordConfirm: req.body.passwordConfirm,
   });
@@ -103,14 +104,19 @@ exports.signup = catchAsync(async (req, res, next) => {
 });
 
 exports.login = catchAsync(async (req, res, next) => {
-  const { email, password } = req.body;
+  const { email, password, role } = req.body;
 
   // 1) Check if email and password exist
   if (!email || !password) {
     return next(new AppError("Hãy nhập tài khoản và mật khẩu!", 400));
   }
   // 2) Check if user exists && password is correct
-  const user = await User.findOne({ email }).select("+password");
+  let user;
+  if (role === "student") {
+    user = await Student.findOne({ email }).select("+password");
+  } else if (role === "parent") {
+    user = await Parent.findOne({ email }).select("+password");
+  }
 
   if (!user || !(await user.correctPassword(password, user.password))) {
     return next(new AppError("Tài khoản hoặc mật khẩu không đúng", 401));
