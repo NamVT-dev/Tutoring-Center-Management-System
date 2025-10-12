@@ -1,85 +1,61 @@
 const catchAsync = require("../utils/catchAsync");
 const AppError = require("../utils/appError");
-const User = require("../models/userModel");
+const {User, Teacher} = require("../models/userModel");
+const Center = require("../models/centerModel");
+const Course = require("../models/courseModel");
 
-function isValidDayIndex(n) {
-  return Number.isInteger(n) && n >= 0 && n <= 6;
-}
+const SHIFT_KEYS = new Set(["morning", "afternoon", "evening"]);
+const isDay = n => Number.isInteger(n) && n >= 0 && n <= 6;
 
-function asDateOrNull(v) {
-  if (!v) return null;
-  const d = new Date(v);
-  return isNaN(d.getTime()) ? null : d;
-}
+// Cho phép giáo viên đăng ký ca dạy theo config trung tâm.
+const registerShiftAvailability = catchAsync(async (req, res, next) => {
+  const teacherId = req.user?.id || "68e01abbc1e0643a71331527";
+  const { slots } = req.body;
 
-//body nhận về 2 kiểu {"days" :[0,1,2,3,4,5,6]} ,
-// { "days": [{ "dayOfWeek":1,
-// "effective":{ "start":"2025-10-01","end":"2025-12-31"} }, 3, 5] }
+  if (!Array.isArray(slots) || !slots.length)
+    return next(new AppError("slots phải là mảng hợp lệ", 400));
 
-const updateMyAvailabilityDays = catchAsync(async (req, res, next) => {
-  //const teacherId = req.user.id;
-  const teacherId = "68e01abbc1e0643a71331525";
-  const payload = req.body?.days;
-  if (!Array.isArray(payload) || payload.length === 0) {
-    return next(
-      new AppError("days phải là mảng ngày trong tuần (0 = CN... 6 =th7)", 400)
-    );
+  const cfg = await Center.findOne({ key: "default" }).lean();
+  if (!cfg){
+    return next(new AppError("trung tâm chưa cấu hình ca hoạt động", 400));
   }
+  const activeDays = new Set(cfg.activeDaysOfWeek || []);
 
   const normalized = [];
-  for (const item of payload) {
-    if (typeof item === "number") {
-      if (!isValidDayIndex(item))
-        throw new AppError(`dayOfWeek không hợp lệ: ${d}`, 400);
-      normalized.push({ dayOfWeek: item, allowed: true });
-    } else if (item && typeof item === "object") {
-      const d = item.dayOfWeek;
-      if (!isValidDayIndex(d))
-        throw new AppError(`dayOfWeek không hợp lệ: ${d}`, 400);
-      let effStart = null,
-        effEnd = null;
-      if (item.effective?.start) {
-        effStart = asDateOrNull(item.effective.start);
-        if (!effStart) throw new AppError("effective.start không hợp lệ", 400);
-      }
-      if (item.effective?.end) {
-        effEnd = asDateOrNull(item.effective.end);
-        if (!effEnd) throw new AppError("effective.end không hợp lệ", 400);
-      }
-      if (effStart && effEnd && effEnd < effStart) {
-        throw new AppError("effective.end phải >= effective.start", 400);
-      }
-      normalized.push({
-        dayOfWeek: d,
-        allowed: item.allowed !== false,
-        effective:
-          effStart || effEnd
-            ? { start: effStart || undefined, end: effEnd || undefined }
-            : undefined,
-      });
-    } else {
-      throw new AppError(
-        "Mỗi phần tử trong days phải là số (0..6) hoặc object {dayOfWeek,...}",
-        400
-      );
-    }
-  }
-  const map = new Map();
-  for (const it of normalized) map.set(it.dayOfWeek, it);
-  const compact = [...map.values()].sort((a, b) => a.dayOfWeek - b.dayOfWeek);
+  for (const s of slots) {
+    if (!isDay(s.dayOfWeek)) 
+      return next(new AppError("dayOfWeek không hợp lệ", 400));
+    if (!Array.isArray(s.shifts) || !s.shifts.length)
+      return next(new AppError("shifts phải là mảng (morning/afternoon/evening)", 400));
+    if (!activeDays.has(s.dayOfWeek))
+      return next(new AppError(`Ngày ${s.dayOfWeek} không nằm trong lịch hoạt động của trung tâm`, 400));
+    
+    const uniqShifts = [...new Set(s.shifts.map(String))];
+    for (const sh of uniqShifts)
+      if (!SHIFT_KEYS.has(sh))
+        return next(new AppError(`Shift không hợp lệ: ${sh}`, 400));
 
-  const allowedCount = compact.filter((x) => x.allowed !== false).length;
-  if (allowedCount < 3) {
-    return next(
-      new AppError("Phải đăng ký ít nhất 3 ngày có thể dạy/tuần", 400)
-    );
+    let eff;
+    if (s.effective?.start || s.effective?.end) {
+      const start = s.effective.start ? new Date(s.effective.start) : undefined;
+      const end = s.effective.end ? new Date(s.effective.end) : undefined;
+      if (end && start && end < start)
+        return next(new AppError("effective.end phải >= effective.start", 400));
+      eff = { start, end };
+    }
+    normalized.push({ dayOfWeek: s.dayOfWeek, shifts: uniqShifts, effective: eff });
   }
+
+   // Gộp trùng ngày, giữ bản ghi cuối
+  const compact = [...new Map(normalized.map(i => [i.dayOfWeek, i])).values()]
+    .sort((a, b) => a.dayOfWeek - b.dayOfWeek);
+
   const teacher = await User.findOneAndUpdate(
     { _id: teacherId, role: "teacher" },
     { $set: { availability: compact } },
-    { new: true, runValidators: true, context: "query" }
+    { new: true, runValidators: true }
   )
-    .select("username email role availability")
+    .select("email availability teachCategories")
     .lean();
 
   if (!teacher) return next(new AppError("Không tìm thấy giáo viên", 404));
@@ -87,6 +63,37 @@ const updateMyAvailabilityDays = catchAsync(async (req, res, next) => {
   res.status(200).json({ status: "success", data: { teacher } });
 });
 
+const registerTeachCategories = catchAsync(async (req, res, next) => {
+  const teacherId = req.user?.id || "68e01abbc1e0643a71331527";
+  const { categories } = req.body;
+
+  if (!Array.isArray(categories) || !categories.length)
+    return next(new AppError("categories phải là mảng không rỗng", 400));
+
+  const normalized = [...new Set(categories.map(s => String(s).trim()))];
+  const validCategories = await Course.distinct("category", { category: { $ne: null } });
+
+  const invalid = normalized.filter(c => !validCategories.includes(c));
+  if (invalid.length)
+    return next(new AppError(`Category không hợp lệ: ${invalid.join(", ")}`, 400));
+
+  const teacher = await User.findOneAndUpdate(
+    { _id: teacherId, role: "teacher" },
+    { $set: { teachCategories: normalized } },
+    { new: true, runValidators: true }
+  )
+    .select("email teachCategories availability")
+    .lean();
+
+  if (!teacher) return next(new AppError("Không tìm thấy giáo viên", 404));
+  res.status(200).json({
+    status: "success",
+    message: "Cập nhật môn dạy thành công",
+    data: { teacher },
+  });
+})
+
 module.exports = {
-  updateMyAvailabilityDays,
+  registerShiftAvailability,
+  registerTeachCategories
 };
