@@ -9,7 +9,7 @@ const isDay = n => Number.isInteger(n) && n >= 0 && n <= 6;
 
 // Cho phép giáo viên đăng ký ca dạy theo config trung tâm.
 const registerShiftAvailability = catchAsync(async (req, res, next) => {
-  const teacherId = req.user?.id || "68e01abbc1e0643a71331527";
+  const teacherId = req.user.id;
   const { slots } = req.body;
 
   if (!Array.isArray(slots) || !slots.length)
@@ -64,7 +64,7 @@ const registerShiftAvailability = catchAsync(async (req, res, next) => {
 });
 
 const registerTeachCategories = catchAsync(async (req, res, next) => {
-  const teacherId = req.user?.id || "68e01abbc1e0643a71331527";
+  const teacherId = req.user.id;
   const { categories } = req.body;
 
   if (!Array.isArray(categories) || !categories.length)
