@@ -5,9 +5,9 @@ const { getCourseCategories } = require("../controllers/courseController");
 const { getConfig } = require("../controllers/centerController")
 const route = express.Router();
 
-//auth for admin 
-// route.use(authCtrl.protect);
-// route.use(authCtrl.restrictTo("teacher"));
+//auth for teacher 
+route.use(authCtrl.protect);
+route.use(authCtrl.restrictTo("teacher"));
 
 route.get("/categories",getCourseCategories);
 route.get("/shift",getConfig);
