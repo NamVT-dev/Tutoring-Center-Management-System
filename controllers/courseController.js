@@ -153,10 +153,19 @@ const deleteCourse = catchAsync(async (req, res, next) => {
   });
 });
 
+const getCourseCategories = catchAsync(async (req, res) => {
+  const categories = await Course.distinct("category", {category: { $ne: null}});
+  res.status(200).json({
+    status: "success",
+    data: { categories },  
+  });
+});
+
 module.exports = {
   createCourse,
   updateCourse,
   listCourses,
   getCourse,
   deleteCourse,
+  getCourseCategories
 };
