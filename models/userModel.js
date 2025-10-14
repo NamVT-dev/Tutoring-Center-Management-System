@@ -10,7 +10,13 @@ const availabilitySchema = new mongoose.Schema(
     // 0=CN ... 6=Thứ 7
     // 0=00h00 ... 1439=23x60 + 59
     dayOfWeek: { type: Number, min: 0, max: 6, required: true },
-    shifts: [{ type: String, enum: ["morning","afternoon","evening"], required: true }],
+    shifts: [
+      {
+        type: String,
+        enum: ["morning", "afternoon", "evening"],
+        required: true,
+      },
+    ],
     effective: {
       start: Date,
       end: Date,
@@ -203,7 +209,7 @@ const teacherSchema = new mongoose.Schema({
   salary: {
     type: [String],
   },
-  teachCategories: [{ type: String, trim: true}]
+  teachCategories: [{ type: String, trim: true }],
 });
 
 exports.Teacher = User.discriminator("teacher", teacherSchema);
