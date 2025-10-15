@@ -1,11 +1,11 @@
 const catchAsync = require("../utils/catchAsync");
 const AppError = require("../utils/appError");
-const {User, Teacher} = require("../models/userModel");
+const { User, Teacher } = require("../models/userModel");
 const Center = require("../models/centerModel");
 const Course = require("../models/courseModel");
 
 const SHIFT_KEYS = new Set(["morning", "afternoon", "evening"]);
-const isDay = n => Number.isInteger(n) && n >= 0 && n <= 6;
+const isDay = (n) => Number.isInteger(n) && n >= 0 && n <= 6;
 
 // Cho phép giáo viên đăng ký ca dạy theo config trung tâm.
 const registerShiftAvailability = catchAsync(async (req, res, next) => {
@@ -16,20 +16,27 @@ const registerShiftAvailability = catchAsync(async (req, res, next) => {
     return next(new AppError("slots phải là mảng hợp lệ", 400));
 
   const cfg = await Center.findOne({ key: "default" }).lean();
-  if (!cfg){
+  if (!cfg) {
     return next(new AppError("trung tâm chưa cấu hình ca hoạt động", 400));
   }
   const activeDays = new Set(cfg.activeDaysOfWeek || []);
 
   const normalized = [];
   for (const s of slots) {
-    if (!isDay(s.dayOfWeek)) 
+    if (!isDay(s.dayOfWeek))
       return next(new AppError("dayOfWeek không hợp lệ", 400));
     if (!Array.isArray(s.shifts) || !s.shifts.length)
-      return next(new AppError("shifts phải là mảng (morning/afternoon/evening)", 400));
+      return next(
+        new AppError("shifts phải là mảng (morning/afternoon/evening)", 400)
+      );
     if (!activeDays.has(s.dayOfWeek))
-      return next(new AppError(`Ngày ${s.dayOfWeek} không nằm trong lịch hoạt động của trung tâm`, 400));
-    
+      return next(
+        new AppError(
+          `Ngày ${s.dayOfWeek} không nằm trong lịch hoạt động của trung tâm`,
+          400
+        )
+      );
+
     const uniqShifts = [...new Set(s.shifts.map(String))];
     for (const sh of uniqShifts)
       if (!SHIFT_KEYS.has(sh))
@@ -43,12 +50,17 @@ const registerShiftAvailability = catchAsync(async (req, res, next) => {
         return next(new AppError("effective.end phải >= effective.start", 400));
       eff = { start, end };
     }
-    normalized.push({ dayOfWeek: s.dayOfWeek, shifts: uniqShifts, effective: eff });
+    normalized.push({
+      dayOfWeek: s.dayOfWeek,
+      shifts: uniqShifts,
+      effective: eff,
+    });
   }
 
-   // Gộp trùng ngày, giữ bản ghi cuối
-  const compact = [...new Map(normalized.map(i => [i.dayOfWeek, i])).values()]
-    .sort((a, b) => a.dayOfWeek - b.dayOfWeek);
+  // Gộp trùng ngày, giữ bản ghi cuối
+  const compact = [
+    ...new Map(normalized.map((i) => [i.dayOfWeek, i])).values(),
+  ].sort((a, b) => a.dayOfWeek - b.dayOfWeek);
 
   const teacher = await User.findOneAndUpdate(
     { _id: teacherId, role: "teacher" },
@@ -70,12 +82,16 @@ const registerTeachCategories = catchAsync(async (req, res, next) => {
   if (!Array.isArray(categories) || !categories.length)
     return next(new AppError("categories phải là mảng không rỗng", 400));
 
-  const normalized = [...new Set(categories.map(s => String(s).trim()))];
-  const validCategories = await Course.distinct("category", { category: { $ne: null } });
+  const normalized = [...new Set(categories.map((s) => String(s).trim()))];
+  const validCategories = await Course.distinct("category", {
+    category: { $ne: null },
+  });
 
-  const invalid = normalized.filter(c => !validCategories.includes(c));
+  const invalid = normalized.filter((c) => !validCategories.includes(c));
   if (invalid.length)
-    return next(new AppError(`Category không hợp lệ: ${invalid.join(", ")}`, 400));
+    return next(
+      new AppError(`Category không hợp lệ: ${invalid.join(", ")}`, 400)
+    );
 
   const teacher = await User.findOneAndUpdate(
     { _id: teacherId, role: "teacher" },
@@ -91,9 +107,9 @@ const registerTeachCategories = catchAsync(async (req, res, next) => {
     message: "Cập nhật môn dạy thành công",
     data: { teacher },
   });
-})
+});
 
 module.exports = {
   registerShiftAvailability,
-  registerTeachCategories
+  registerTeachCategories,
 };
