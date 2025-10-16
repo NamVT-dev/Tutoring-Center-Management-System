@@ -18,8 +18,8 @@ const getListTeacher = catchAsync(async (req, res) => {
   });
 
   const [total, teachers] = await Promise.all([
-    User.countDocuments(finalQuery),
-    User.find(finalQuery)
+    Teacher.countDocuments(finalQuery),
+    Teacher.find(finalQuery)
       .skip(paginationOptions.skip)
       .limit(paginationOptions.limit)
       .select(paginationOptions.select)
@@ -37,7 +37,7 @@ const getListTeacher = catchAsync(async (req, res) => {
 });
 
 const getTeacherDetail = catchAsync(async (req, res, next) => {
-  const teacher = await User.findOne({ _id: req.params.id })
+  const teacher = await Teacher.findOne({ _id: req.params.id })
     .select("-password -confirmPin -passwordResetToken -student")
     .lean();
 
