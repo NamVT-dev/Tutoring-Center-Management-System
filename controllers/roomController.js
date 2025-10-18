@@ -72,9 +72,8 @@ const listRoom = catchAsync(async (req, res, next) => {
   if (status) filters.status = status;
 
   const rooms = await Room.find(filters)
-    .select("name capacity status -_id")
+    .select("name capacity status _id")
     .sort("name");
-
   res.status(200).json({
     status: "success",
     results: rooms.length,

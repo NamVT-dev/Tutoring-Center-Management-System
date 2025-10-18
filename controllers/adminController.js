@@ -1,7 +1,7 @@
 const catchAsync = require("../utils/catchAsync");
 const AppError = require("../utils/appError");
 const { buildPaginatedQuery } = require("../utils/queryHelper");
-const User = require("../models/userModel");
+const { User, Teacher } = require("../models/userModel");
 
 const getListTeacher = catchAsync(async (req, res) => {
   const { status, page = 1, limit = 10 } = req.query;
@@ -18,8 +18,8 @@ const getListTeacher = catchAsync(async (req, res) => {
   });
 
   const [total, teachers] = await Promise.all([
-    User.countDocuments(finalQuery),
-    User.find(finalQuery)
+    Teacher.countDocuments(finalQuery),
+    Teacher.find(finalQuery)
       .skip(paginationOptions.skip)
       .limit(paginationOptions.limit)
       .select(paginationOptions.select)
@@ -37,7 +37,7 @@ const getListTeacher = catchAsync(async (req, res) => {
 });
 
 const getTeacherDetail = catchAsync(async (req, res, next) => {
-  const teacher = await User.findOne({ _id: req.params.id })
+  const teacher = await Teacher.findOne({ _id: req.params.id })
     .select("-password -confirmPin -passwordResetToken -student")
     .lean();
 
