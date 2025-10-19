@@ -62,7 +62,7 @@ const registerShiftAvailability = catchAsync(async (req, res, next) => {
     ...new Map(normalized.map((i) => [i.dayOfWeek, i])).values(),
   ].sort((a, b) => a.dayOfWeek - b.dayOfWeek);
 
-  const teacher = await User.findOneAndUpdate(
+  const teacher = await Teacher.findOneAndUpdate(
     { _id: teacherId, role: "teacher" },
     { $set: { availability: compact } },
     { new: true, runValidators: true }
@@ -93,7 +93,7 @@ const registerTeachCategories = catchAsync(async (req, res, next) => {
       new AppError(`Category không hợp lệ: ${invalid.join(", ")}`, 400)
     );
 
-  const teacher = await User.findOneAndUpdate(
+  const teacher = await Teacher.findOneAndUpdate(
     { _id: teacherId, role: "teacher" },
     { $set: { teachCategories: normalized } },
     { new: true, runValidators: true }
