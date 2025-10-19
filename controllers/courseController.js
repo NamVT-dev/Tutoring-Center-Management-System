@@ -71,7 +71,7 @@ const getCourse = catchAsync(async (req, res, next) => {
   res.json({ status: "success", data: { course } });
 });
 
-const listCourses = catchAsync(async (req, res, next) => {
+const listCourses = catchAsync(async (req, res) => {
   const {
     page = 1,
     limit = 10,

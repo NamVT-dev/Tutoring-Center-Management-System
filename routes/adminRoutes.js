@@ -4,6 +4,7 @@ const roomctrl = require("../controllers/roomController");
 const courseCtrl = require("../controllers/courseController");
 const centerCtrl = require("../controllers/centerController");
 const authCtrl = require("../controllers/authController");
+const categoryCtrl = require("../controllers/categoryController");
 const route = express.Router();
 
 //auth for admin
@@ -26,4 +27,7 @@ route.get("/courses/:id", courseCtrl.getCourse);
 //quan ly center
 route.get("/center/config", centerCtrl.getConfig);
 route.patch("/center/config", centerCtrl.updateConfig);
+//quan ly category
+route.get("/categories", categoryCtrl.getAllCategories);
+route.post("/categories", categoryCtrl.createCategory);
 module.exports = route;

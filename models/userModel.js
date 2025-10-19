@@ -61,8 +61,8 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["student", "admin", "teacher", "parent"],
-      default: "student",
+      enum: ["admin", "teacher", "member"],
+      default: "member",
     },
     password: {
       type: String,
@@ -187,19 +187,9 @@ const User = mongoose.model("User", userSchema, "users");
 
 exports.User = User;
 
-const studentSchema = new mongoose.Schema({
-  class: {
-    type: [mongoose.Schema.Types.ObjectId],
-    ref: "Class",
-  },
-  level: String,
-});
-
-exports.Student = User.discriminator("student", studentSchema);
-
 const teacherSchema = new mongoose.Schema({
   class: {
-    type: [mongoose.Schema.Types.ObjectId],
+    type: [mongoose.Schema.ObjectId],
     ref: "Class",
   },
   level: String,
@@ -214,11 +204,11 @@ const teacherSchema = new mongoose.Schema({
 
 exports.Teacher = User.discriminator("teacher", teacherSchema);
 
-const parentSchema = new mongoose.Schema({
+const memberSchema = new mongoose.Schema({
   student: {
     type: [mongoose.Schema.ObjectId],
-    ref: "User",
+    ref: "Student",
   },
 });
 
-exports.Parent = User.discriminator("parent", parentSchema);
+exports.Member = User.discriminator("member", memberSchema);
