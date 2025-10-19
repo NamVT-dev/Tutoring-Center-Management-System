@@ -83,12 +83,7 @@ exports.signup = catchAsync(async (req, res, next) => {
       dob: req.body.dob,
       fullname: req.body.name,
     },
-    role:
-      req.body.role === "student"
-        ? "student"
-        : req.body.role === "parent"
-          ? "parent"
-          : "student",
+    role: "member",
     password: req.body.password,
     passwordConfirm: req.body.passwordConfirm,
   });

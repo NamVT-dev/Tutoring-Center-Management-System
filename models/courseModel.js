@@ -9,7 +9,8 @@ const courseSchema = new mongoose.Schema({
   description: String,
   price: Number,
   category: {
-    type: String,
+    type: mongoose.Schema.ObjectId,
+    ref: "Category",
   },
   level: {
     type: String,
