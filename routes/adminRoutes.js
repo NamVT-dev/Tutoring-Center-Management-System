@@ -28,6 +28,5 @@ route.get("/courses/:id", courseCtrl.getCourse);
 route.get("/center/config", centerCtrl.getConfig);
 route.patch("/center/config", centerCtrl.updateConfig);
 //quan ly category
-route.get("/categories", categoryCtrl.getAllCategories);
 route.post("/categories", categoryCtrl.createCategory);
 module.exports = route;
