@@ -1,0 +1,29 @@
+extends baseEmail
+
+block content
+  p Xin chào #{firstName},
+  p Chúc mừng bạn đã đăng ký thi thử #{categoryName} thành công trên hệ thống TutorCenter! 🎉
+  p Dưới đây là thông tin bài thi của bạn:
+  ul
+    li 🧾 Mã bài thi: #{testId}
+    li 📅 Ngày sinh: #{dob}
+    li 📚 Danh mục: #{categoryName}
+  p Bạn có thể bắt đầu làm bài thi bằng cách nhấn vào nút bên dưới:
+  table.btn.btn-primary(role='presentation', border='0', cellpadding='0', cellspacing='0')
+    tbody
+      tr
+        td(align='left')
+          table(role='presentation', border='0', cellpadding='0', cellspacing='0')
+            tbody
+              tr
+                td
+                  a(href="#", target='_blank') Bắt đầu làm bài thi
+  p ⏰ Lưu ý: Hãy hoàn thành bài thi trong thời gian quy định. Mọi thông tin kết quả sẽ được thông báo sau khi bạn hoàn thành.
+  hr
+  p Nếu bạn cần hỗ trợ thêm, vui lòng liên hệ bộ phận hỗ trợ khách hàng của chúng tôi:
+  ul
+    li 📞 Hotline: 1900 123 456
+    li 📧 Email: support@tutorcenter.com
+    li 🌐 Website: https://tutorcenter.com
+  p Trân trọng,
+  p Đội ngũ hỗ trợ TutorCenter

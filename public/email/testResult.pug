@@ -1,0 +1,26 @@
+extends baseEmail
+
+block content
+  p Xin chào #{studentName},
+  p 🎉 Chúc mừng bạn đã hoàn thành bài thi thử của TutorCenter!
+  p Kết quả của bạn là:
+  table(border='0', cellpadding='6', cellspacing='0', style='margin: 10px 0; border-collapse: collapse;')
+    tr
+      td(style='font-weight: bold;') 📘 Danh mục:
+      td #{category}
+    tr
+      td(style='font-weight: bold;') 🧮 Điểm số:
+      td #{score}
+  p Chúng tôi sẽ **xem xét kết quả** của bạn và **sắp xếp lớp học phù hợp** với năng lực của bạn trong thời gian sớm nhất.  
+  p Bộ phận tư vấn sẽ liên hệ với bạn để trao đổi thêm thông tin chi tiết về lộ trình học tập.
+
+  hr
+  p Nếu bạn có bất kỳ thắc mắc nào, vui lòng liên hệ:
+  ul
+    li 📞 Hotline: 1900 123 456
+    li 📧 Email: support@tutorcenter.vn
+    li 🌐 Website: www.tutorcenter.vn
+
+  p Cảm ơn bạn đã tin tưởng lựa chọn TutorCenter.
+  p Trân trọng,  
+  p Đội ngũ hỗ trợ TutorCenter
