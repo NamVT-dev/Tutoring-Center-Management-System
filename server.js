@@ -1,5 +1,16 @@
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
+const fs = require("fs");
+const path = require("path");
+
+const csvFilePath = path.join("public", "results.csv");
+
+if (!fs.existsSync(csvFilePath)) {
+  fs.writeFileSync(
+    csvFilePath,
+    "studentId,name,dob,category,testId,score,status\n"
+  );
+}
 
 process.on("uncaughtException", (err) => {
   console.log("UNCAUGHT EXCEPTION! 💥 Shutting down...");
@@ -9,6 +20,7 @@ process.on("uncaughtException", (err) => {
 dotenv.config({ path: "./.env" });
 
 const app = require("./app");
+const cronJob = require("./utils/cronTask");
 
 const DB = process.env.DATABASE;
 mongoose.connect(DB).then(() => console.log("DB connection successful!"));
@@ -17,6 +29,8 @@ const port = process.env.PORT || 9999;
 const server = app.listen(port, () => {
   console.log(`App running on port ${port}...`);
 });
+
+cronJob();
 
 process.on("unhandledRejection", (err) => {
   console.log("UNHANDLED REJECTION! 💥 Shutting down...");

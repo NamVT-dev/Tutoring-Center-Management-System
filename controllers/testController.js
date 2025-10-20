@@ -1,17 +1,13 @@
 const catchAsync = require("../utils/catchAsync");
-const fs = require("fs");
 const path = require("path");
 const AppError = require("../utils/appError");
 const { Member } = require("../models/userModel");
 const Category = require("../models/categoryModel");
 const Student = require("../models/studentModel");
+const Email = require("../utils/email");
 const createCsvWriter = require("csv-writer").createObjectCsvWriter;
 
 const csvFilePath = path.join(__dirname, "..", "public", "results.csv");
-
-if (!fs.existsSync(csvFilePath)) {
-  fs.writeFileSync("results.csv", "name,email,testId,score,status\n");
-}
 
 exports.registerTest = catchAsync(async (req, res, next) => {
   const { name, dob, categoryId } = req.body;
@@ -36,6 +32,7 @@ exports.registerTest = catchAsync(async (req, res, next) => {
   const csvWriter = createCsvWriter({
     path: csvFilePath,
     header: [
+      { id: "studentId", title: "studentId" },
       { id: "name", title: "name" },
       { id: "dob", title: "dob" },
       { id: "category", title: "category" },
@@ -50,6 +47,7 @@ exports.registerTest = catchAsync(async (req, res, next) => {
 
   await csvWriter.writeRecords([
     {
+      studentId: student.id,
       name,
       dob,
       category: category.name,
@@ -58,6 +56,17 @@ exports.registerTest = catchAsync(async (req, res, next) => {
       status: "registered",
     },
   ]);
+
+  try {
+    await new Email(req.user, {
+      categoryName: category.name,
+      testId,
+      dob,
+    }).sendTestRegisterSuccess();
+    /*eslint-disable-next-line*/
+  } catch (error) {
+    return next(new AppError("Có lỗi khi gửi email. Hãy thử lại sau!"), 500);
+  }
 
   res.status(201).json({ message: "Đăng ký thành công!" });
 });

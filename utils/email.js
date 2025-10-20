@@ -67,4 +67,18 @@ module.exports = class Email {
       "Cài lại mật khẩu trên TutorCenter (khả dụng trong 10p)"
     );
   }
+
+  async sendTestRegisterSuccess() {
+    await this.send(
+      "testRegisterSuccess",
+      "Đăng ký test thành công, hãy truy cập vào đường link để thực hiện bài test"
+    );
+  }
+
+  async sendTestResult() {
+    await this.send(
+      "testResult",
+      "Điểm thi của bạn đã có! Cùng xem kết quả và lộ trình học sắp tới"
+    );
+  }
 };
