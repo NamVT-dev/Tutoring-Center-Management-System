@@ -93,7 +93,7 @@ const listCourses = catchAsync(async (req, res) => {
   const { finalQuery, paginationOptions } = buildPaginatedQuery({
     query: req.query,
     filters,
-    searchFields: ["name", "description", "category", "level"],
+    searchFields: ["name", "description", "level"],
     page: Number(page),
     limit: Number(limit),
 
