@@ -68,5 +68,7 @@ exports.registerTest = catchAsync(async (req, res, next) => {
     return next(new AppError("Có lỗi khi gửi email. Hãy thử lại sau!"), 500);
   }
 
-  res.status(201).json({ message: "Đăng ký thành công!" });
+  res
+    .status(201)
+    .json({ message: "Đăng ký thành công! Hãy kiểm tra email của bạn." });
 });
