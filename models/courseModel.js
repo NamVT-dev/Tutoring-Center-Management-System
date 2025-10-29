@@ -20,6 +20,8 @@ const courseSchema = new mongoose.Schema({
   imageCover: String,
 });
 courseSchema.index({ level: 1, category: 1 });
+
+courseSchema.pre("save", async function (next) {});
 const Course = mongoose.model("Course", courseSchema, "courses");
 
 module.exports = Course;
