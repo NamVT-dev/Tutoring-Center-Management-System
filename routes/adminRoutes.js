@@ -19,8 +19,15 @@ route.patch("/rooms/update/:id", roomctrl.updateRoom);
 route.get("/rooms", roomctrl.listRoom);
 route.delete("/rooms/:id/delete", roomctrl.deleteRoom);
 //quan ly course
-route.post("/courses", courseCtrl.createCourse);
-route.patch("/courses/update/:id", courseCtrl.updateCourse);
+route.post("/courses", 
+    courseCtrl.uploadCourseImage,     
+    courseCtrl.processCourseImage,
+    courseCtrl.createCourse);
+route.patch("/courses/update/:id",
+    courseCtrl.uploadCourseImage,   
+    courseCtrl.processCourseImage,
+    courseCtrl.updateCourse,
+    );
 route.get("/courses", courseCtrl.listCourses);
 route.delete("/courses/:id/delete", courseCtrl.deleteCourse);
 route.get("/courses/:id", courseCtrl.getCourse);

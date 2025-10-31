@@ -67,17 +67,36 @@ const updateRoom = catchAsync(async (req, res, next) => {
 });
 
 const listRoom = catchAsync(async (req, res, next) => {
-  const { status } = req.query;
+  const { status, page = 1, limit = 10 } = req.query;
   const filters = {};
   if (status) filters.status = status;
+  const { finalQuery, paginationOptions } = buildPaginatedQuery({
+    query: req.query,
+    filters,
+    searchFields: ["name", "status"],
+    page: Number(page),
+    limit: Number(limit),
+    select:"_id name capacity status",
+    sort:req.query.sort || "name"
+  });
 
-  const rooms = await Room.find(filters)
-    .select("name capacity status _id")
-    .sort("name");
+
+  const [total, rooms] = await Promise.all([
+    Room.countDocuments(finalQuery),
+    Room.find(finalQuery)
+      .skip(paginationOptions.skip)
+      .limit(paginationOptions.limit)
+      .select(paginationOptions.select)
+      .sort(paginationOptions.sort)
+      .lean(),
+  ]);
   res.status(200).json({
     status: "success",
     results: rooms.length,
-    data: { rooms },
+    total,
+    page : Number(page),
+    totalPages: Math.ceil(total / Number(limit || 10)),
+    data: {rooms}
   });
 });
 const deleteRoom = catchAsync(async (req, res, next) => {

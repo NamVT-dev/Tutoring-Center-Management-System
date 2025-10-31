@@ -1,10 +1,52 @@
+const multer = require("multer");
+const sharp = require("sharp");
 const catchAsync = require("../utils/catchAsync");
 const AppError = require("../utils/appError");
 const { buildPaginatedQuery } = require("../utils/queryHelper");
 const Course = require("../models/courseModel");
 const Class = require("../models/classModel");
 const Session = require("../models/sessionModel");
+const Category = require("../models/categoryModel");
+const { uploadToCloudinary } = require("../config/cloudinary");
 
+const multerStorage = multer.memoryStorage();
+
+const multerFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith("image")) {
+    cb(null, true);
+  } else {
+    cb(
+      new AppError("Không phải ảnh! Xin hãy đăng đúng định dạng ảnh.", 400),
+      false
+    );
+  }
+};
+
+const upload = multer({
+  storage: multerStorage,
+  fileFilter: multerFilter,
+});
+
+const uploadCourseImage = upload.single("imageCover");
+
+const processCourseImage = catchAsync(async (req, res, next) => {
+  if (!req.file) return next();
+
+  const filename = `course-${Date.now()}-cover.jpeg`;
+
+  const buffer = await sharp(req.file.buffer)
+    .resize(2000, 1333)
+    .toFormat("jpeg")
+    .jpeg({ quality: 90 })
+    .toBuffer();
+
+  const uploaded = await uploadToCloudinary("courses", buffer, filename);
+
+  // Lưu URL để ghi vào DB
+  req.body.imageCover = uploaded.secure_url;
+
+  return next();
+});
 const createCourse = catchAsync(async (req, res, next) => {
   const {
     name,
@@ -34,7 +76,8 @@ const createCourse = catchAsync(async (req, res, next) => {
       durationInMinutes: +durationInMinutes,
       imageCover,
     });
-    res.status(201).json({ status: "success", data: { course } });
+    const populated = await course.populate("category", "name");
+    res.status(201).json({ status: "success", data: { populated } });
   } catch (err) {
     if (err.code === 11000)
       return next(new AppError(`Khoá học "${name}" đã tồn tại`, 409));
@@ -55,7 +98,7 @@ const updateCourse = catchAsync(async (req, res, next) => {
       new: true,
       runValidators: true,
       context: "query",
-    });
+    }).populate("category", "name");
     if (!course) return next(new AppError("Không tìm thấy khoá học", 404));
     res.json({ status: "success", data: { course } });
   } catch (err) {
@@ -66,12 +109,14 @@ const updateCourse = catchAsync(async (req, res, next) => {
 });
 
 const getCourse = catchAsync(async (req, res, next) => {
-  const course = await Course.findById(req.params.id).lean();
+  const course = await Course.findById(req.params.id)
+    .populate("category", "name")
+    .lean();
   if (!course) return next(new AppError("Không tìm thấy khoá học", 404));
   res.json({ status: "success", data: { course } });
 });
 
-const listCourses = catchAsync(async (req, res) => {
+const listCourses = catchAsync(async (req, res, next) => {
   const {
     page = 1,
     limit = 10,
@@ -83,7 +128,12 @@ const listCourses = catchAsync(async (req, res) => {
 
   const filters = {};
   if (level) filters.level = level;
-  if (category) filters.category = category;
+  if (category) {
+    if (!mongoose.Types.ObjectId.isValid(category)) {
+      return next(new AppError("ID của category không hợp lệ", 400));
+    }
+    filters.category = category;
+  }
   if (minPrice || maxPrice) {
     filters.price = {};
     if (minPrice) filters.price.$gte = +minPrice;
@@ -93,7 +143,7 @@ const listCourses = catchAsync(async (req, res) => {
   const { finalQuery, paginationOptions } = buildPaginatedQuery({
     query: req.query,
     filters,
-    searchFields: ["name", "description", "category", "level"],
+    searchFields: ["name", "description", "level"],
     page: Number(page),
     limit: Number(limit),
 
@@ -109,6 +159,7 @@ const listCourses = catchAsync(async (req, res) => {
       .limit(paginationOptions.limit)
       .select(paginationOptions.select)
       .sort(paginationOptions.sort)
+      .populate("category", "name")
       .lean(),
   ]);
 
@@ -154,9 +205,15 @@ const deleteCourse = catchAsync(async (req, res, next) => {
 });
 
 const getCourseCategories = catchAsync(async (req, res) => {
-  const categories = await Course.distinct("category", {
-    category: { $ne: null },
-  });
+  const categoryIds = await Course.distinct("category");
+
+  const validCategoryIds = categoryIds.filter((id) => id);
+  const categories = await Category.find({
+    _id: { $in: validCategoryIds },
+  })
+    .select("name")
+    .lean();
+
   res.status(200).json({
     status: "success",
     data: { categories },
@@ -164,6 +221,9 @@ const getCourseCategories = catchAsync(async (req, res) => {
 });
 
 module.exports = {
+  uploadCourseImage,
+  processCourseImage,
+
   createCourse,
   updateCourse,
   listCourses,
