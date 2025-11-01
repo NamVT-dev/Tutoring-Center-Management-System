@@ -8,6 +8,7 @@ const Class = require("../models/classModel");
 const Session = require("../models/sessionModel");
 const Category = require("../models/categoryModel");
 const { uploadToCloudinary } = require("../config/cloudinary");
+const { default: mongoose } = require("mongoose");
 
 const multerStorage = multer.memoryStorage();
 
@@ -66,7 +67,7 @@ const createCourse = catchAsync(async (req, res, next) => {
   }
 
   try {
-    const course = await Course.create({
+    const newCourse = await Course.create({
       name: String(name).trim(),
       description,
       price: price ?? undefined,
@@ -76,8 +77,8 @@ const createCourse = catchAsync(async (req, res, next) => {
       durationInMinutes: +durationInMinutes,
       imageCover,
     });
-    const populated = await course.populate("category", "name");
-    res.status(201).json({ status: "success", data: { populated } });
+    const course = await Course.findById(newCourse._id).populate("category");
+    res.status(201).json({ status: "success", data: { course } });
   } catch (err) {
     if (err.code === 11000)
       return next(new AppError(`Khoá học "${name}" đã tồn tại`, 409));
