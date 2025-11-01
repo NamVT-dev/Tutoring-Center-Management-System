@@ -5,12 +5,13 @@ const path = require("path");
 const Email = require("./email");
 const { Member } = require("../models/userModel");
 const Student = require("../models/studentModel");
+const createCsvWriter = require("csv-writer").createObjectCsvWriter;
 
 const csvFilePath = path.join(__dirname, "..", "public", "results.csv");
 
 const cronJob = () => {
   cron.schedule(
-    "* * 8 * * *",
+    "0 0 8 * * *",
     () => {
       console.log(
         "📅 Cron bắt đầu kiểm tra kết quả:",
@@ -36,7 +37,8 @@ const cronJob = () => {
           for (const studentResult of testedStudents) {
             try {
               const student = await Student.findById(studentResult.studentId);
-              student.score = studentResult.score;
+              student.testScore = studentResult.score;
+              student.testResultAt = Date.now();
               student.tested = true;
               student.save({ validateBeforeSave: false });
 
@@ -78,11 +80,12 @@ async function updateCSVStatus(testId) {
     rows.push(row);
   }
 
-  // Ghi đè lại file CSV
-  const header = Object.keys(rows[0]).join(",") + "\n";
-  const body = rows.map((r) => Object.values(r).join(",")).join("\n");
+  const csvWriter = createCsvWriter({
+    path: csvFilePath,
+    header: Object.keys(rows[0]).map((key) => ({ id: key, title: key })),
+  });
 
-  fs.writeFileSync(csvFilePath, header + body);
+  await csvWriter.writeRecords(rows);
 }
 
 module.exports = cronJob;

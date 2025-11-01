@@ -19,10 +19,22 @@ const studentSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
-  score: {
+  testScore: {
     type: Number,
     default: 0,
   },
+  registeredAt: {
+    type: Date,
+    default: Date.now(),
+  },
+  testResultAt: {
+    type: Date,
+  },
+});
+
+studentSchema.pre(/^find/, function (next) {
+  this.populate("category");
+  next();
 });
 
 const Student = mongoose.model("Student", studentSchema, "students");

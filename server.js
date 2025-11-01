@@ -12,6 +12,13 @@ if (!fs.existsSync(csvFilePath)) {
   );
 }
 
+if (fs.existsSync(csvFilePath)) {
+  const data = fs.readFileSync(csvFilePath, "utf8");
+  if (!data.endsWith("\n")) {
+    fs.appendFileSync(csvFilePath, "\n");
+  }
+}
+
 process.on("uncaughtException", (err) => {
   console.log("UNCAUGHT EXCEPTION! 💥 Shutting down...");
   console.log(err.name, err.message);
