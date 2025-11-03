@@ -41,6 +41,11 @@ courseSchema.pre("save", async function (next) {
   next();
 });
 
+courseSchema.pre(/^find/, function (next) {
+  this.populate("category");
+  next();
+});
+
 const Course = mongoose.model("Course", courseSchema, "courses");
 
 module.exports = Course;

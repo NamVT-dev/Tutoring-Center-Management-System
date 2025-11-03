@@ -2,6 +2,8 @@ const OpenAI = require("openai");
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+exports.client = openai;
+
 exports.embedText = async (text) => {
   const results = await openai.embeddings.create({
     model: "text-embedding-3-small",
