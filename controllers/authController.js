@@ -26,7 +26,7 @@ const upload = multer({
   fileFilter: multerFilter,
 });
 
-exports.uploadUserPhoto = upload.single("photo");
+exports.uploadUserPhoto = upload.single("profile[photo]");
 
 exports.resizeUserPhoto = catchAsync(async (req, res, next) => {
   if (!req.file) return next();
@@ -340,8 +340,8 @@ exports.updateProfile = catchAsync(async (req, res, next) => {
   };
 
   // 2) Filtered out unwanted fields names that are not allowed to be updated
-  const filteredBody = filterObj(req.body, "name", "description");
-  if (req.file) filteredBody.photo = req.file.filename;
+  const filteredBody = filterObj(req.body, "profile", "description");
+  if (req.file) filteredBody.profile["photo"] = req.file.filename;
 
   // 3) Update user document
   const updatedUser = await User.findByIdAndUpdate(req.user.id, filteredBody, {
