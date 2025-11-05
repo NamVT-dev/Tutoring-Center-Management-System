@@ -41,6 +41,7 @@ const sessionSchema = new mongoose.Schema(
 
     // Nguồn gốc: từ weekly hay one-off (tuỳ chọn)
     origin: { type: String, enum: ["weekly", "oneoff"], default: "weekly" },
+    createdByJob: { type: mongoose.Schema.Types.ObjectId, ref: 'ScheduleJob', index: true },
   },
   { timestamps: true }
 );
