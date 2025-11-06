@@ -52,5 +52,9 @@ exports.deleteStaff = catchAsync(async (req, res, next) => {
   });
 });
 
-exports.getAllStaff = factory.getAll(Staff, "profile.fullname");
+exports.getAllStaff = factory.getAll(Staff, [
+  "profile.fullname",
+  "email",
+  "profile.phoneNumber",
+]);
 exports.getOneStaff = factory.getOne(Staff);

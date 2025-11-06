@@ -1,7 +1,7 @@
 const _ = require("lodash");
 
 class APIFeatures {
-  constructor(query, queryString, searchTerm = "") {
+  constructor(query, queryString, searchTerm = []) {
     this.query = query;
     this.queryString = queryString;
     this.searchTerm = searchTerm;
@@ -53,13 +53,18 @@ class APIFeatures {
   }
 
   search() {
-    if (this.queryString.search && this.searchTerm) {
+    if (this.queryString.search && this.searchTerm.length > 0) {
       const search = {
-        [this.searchTerm]: {
-          $regex: _.escapeRegExp(this.queryString.search),
-          $options: "i",
-        },
+        $or: [],
       };
+      this.searchTerm.forEach((term) =>
+        search.$or.push({
+          [term]: {
+            $regex: _.escapeRegExp(this.queryString.search),
+            $options: "i",
+          },
+        })
+      );
       this.query = this.query.find(search);
     }
     return this;
