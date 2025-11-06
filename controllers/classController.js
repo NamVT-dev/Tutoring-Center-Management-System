@@ -36,7 +36,6 @@ exports.listClasses = catchAsync(async (req, res, next) => {
     filters.course = course;
   }
 
-
   if (teacher) {
     if (!mongoose.Types.ObjectId.isValid(teacher)) {
       return next(new AppError("ID của teacher không hợp lệ", 400));
@@ -56,7 +55,6 @@ exports.listClasses = catchAsync(async (req, res, next) => {
     }
   }
 
-
   if (shift) {
     const centerConfig = await Center.findOne({ key: "default" }).lean();
     const s = findShiftByName(centerConfig, shift);
@@ -65,7 +63,6 @@ exports.listClasses = catchAsync(async (req, res, next) => {
     filters["weeklySchedules.endMinute"] = { $lte: s.endMinute };
   }
 
-
   if (startFrom || endTo) {
     filters.$and = [];
     if (startFrom) filters.$and.push({ endAt: { $gte: new Date(startFrom) } });
@@ -73,11 +70,10 @@ exports.listClasses = catchAsync(async (req, res, next) => {
     if (filters.$and.length === 0) delete filters.$and;
   }
 
-
   const { finalQuery, paginationOptions } = buildPaginatedQuery({
     query: req.query,
     filters,
-    search: search, 
+    search: search,
     searchFields: ["name", "classCode"],
     page: Number(page),
     limit: Number(limit),
@@ -87,13 +83,23 @@ exports.listClasses = catchAsync(async (req, res, next) => {
     sort: req.query.sort || "startAt",
   });
 
-
-  const includeSet = new Set(String(include || "").split(",").map((s) => s.trim()).filter(Boolean));
+  const includeSet = new Set(
+    String(include || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+  );
   const populate = [];
-  if (!include) includeSet.add("teacher"), includeSet.add("room");
-  if (includeSet.has("course")) populate.push({ path: "course", select: "name level category" });
-  if (includeSet.has("teacher")) populate.push({ path: "weeklySchedules.teacher", select: "profile.fullname" });
-  if (includeSet.has("room")) populate.push({ path: "weeklySchedules.room", select: "name capacity" });
+  if (!include) (includeSet.add("teacher"), includeSet.add("room"));
+  if (includeSet.has("course"))
+    populate.push({ path: "course", select: "name level category" });
+  if (includeSet.has("teacher"))
+    populate.push({
+      path: "weeklySchedules.teacher",
+      select: "profile.fullname",
+    });
+  if (includeSet.has("room"))
+    populate.push({ path: "weeklySchedules.room", select: "name capacity" });
 
   const [total, classes] = await Promise.all([
     Class.countDocuments(finalQuery),
@@ -113,5 +119,92 @@ exports.listClasses = catchAsync(async (req, res, next) => {
     page: Number(page),
     totalPages: Math.ceil(total / Number(limit || 10)),
     data: { classes },
+  });
+});
+exports.getClassDetail = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+  const {
+    include,
+    select,
+    withSessions = "true",
+    sessionFrom,
+    sessionTo,
+    sessionLimit = 50,
+    sessionSort,
+    sessionSelect,
+  } = req.query;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return next(new AppError("ID của class không hợp lệ", 400));
+  }
+
+  const includeSet = new Set(
+    String(include || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+  );
+
+  if (!include) {
+    includeSet.add("teacher");
+    includeSet.add("room");
+    includeSet.add("course");
+  }
+
+  const populate = [];
+  if (includeSet.has("course")) {
+    populate.push({ path: "course", select: "name level category session" });
+  }
+  if (includeSet.has("teacher")) {
+    populate.push({
+      path: "weeklySchedules.teacher",
+      select: "profile.fullname email",
+    });
+  }
+  if (includeSet.has("room")) {
+    populate.push({ path: "weeklySchedules.room", select: "name capacity" });
+  }
+
+  const classSelect =
+    select ||
+    "name classCode status course startAt endAt minStudent maxStudent preferredTeacher weeklySchedules createdAt";
+
+  const cls = await Class.findById(id)
+    .select(classSelect)
+    .populate(populate)
+    .lean();
+  if (!cls) {
+    return next(new AppError("Không tìm thấy lớp", 404));
+  }
+
+  let sessions = [];
+  if (withSessions === "true") {
+    const sQuery = { class: id };
+    if (sessionFrom || sessionTo) {
+      sQuery.startAt = {};
+      if (sessionFrom) sQuery.startAt.$gte = new Date(sessionFrom);
+      if (sessionTo) sQuery.startAt.$lte = new Date(sessionTo);
+      if (!Object.keys(sQuery.startAt).length) delete sQuery.startAt;
+    }
+
+    const sSort = sessionSort === "-startAt" ? { startAt: -1 } : { startAt: 1 };
+    const sSelect =
+      sessionSelect || "sessionNo startAt endAt status origin room teacher";
+
+    sessions = await Session.find(sQuery)
+      .select(sSelect)
+      .sort(sSort)
+      .limit(Number(sessionLimit) || 50)
+      .populate({ path: "teacher", select: "profile.fullname" })
+      .populate({ path: "room", select: "name capacity" })
+      .lean();
+  }
+
+  res.status(200).json({
+    status: "success",
+    data: {
+      class: cls,
+      sessions,
+    },
   });
 });

@@ -39,4 +39,5 @@ route.patch("/center/config", centerCtrl.updateConfig);
 route.post("/categories", categoryCtrl.createCategory);
 //quan ly class
 route.get("/classes", classCtrl.listClasses);
+route.get("/classes/:id", classCtrl.getClassDetail);
 module.exports = route;
