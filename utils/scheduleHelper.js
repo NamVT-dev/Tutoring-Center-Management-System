@@ -29,36 +29,73 @@ function computeClassStartEndExact({
   timezone,
   weeklySchedules,
   totalSessions,
-  firstWeekOffset = 1,
+  anchorDate,
 }) {
   const slots = [...weeklySchedules].sort(
     (a, b) => a.dayOfWeek - b.dayOfWeek || a.startMinute - b.startMinute
   );
   const slotsPerWeek = slots.length;
-  const baseWeek = moment
-    .tz(timezone)
-    .startOf("week")
-    .add(firstWeekOffset, "week");
+  const anchor = moment.tz(anchorDate, timezone).startOf("day");
+  // 1) Buổi đầu tiên: với mỗi slot, tìm ngày trong tuần TRÊN/SAU anchor
+  const firstStartMoments = slots.map((s) => {
+    // Lấy ngày 's.dayOfWeek' trong tuần của anchor
+    let d = anchor.clone().day(s.dayOfWeek);
+    // Nếu rơi TRƯỚC anchor (trong cùng tuần), nhảy sang tuần kế
+    if (d.isBefore(anchor)) d.add(1, "week");
 
-  const firstWeekStarts = slots.map((s) =>
-    baseWeek.clone().day(s.dayOfWeek).add(s.startMinute, "minutes").toDate()
-  );
-  const startAt = new Date(
-    Math.min(...firstWeekStarts.map((d) => d.getTime()))
+    // Lắp giờ/phút theo startMinute
+    const dt = moment
+      .tz(
+        {
+          year: d.year(),
+          month: d.month(),
+          date: d.date(),
+          hour: 0,
+          minute: 0,
+          second: 0,
+        },
+        timezone
+      )
+      .add(s.startMinute, "minutes");
+
+    return dt;
+  });
+
+  // Buổi đầu là MIN của các slot đầu tuần
+  const firstStart = firstStartMoments.reduce((min, cur) =>
+    cur.isBefore(min) ? cur : min
   );
 
   const lastIndex = totalSessions - 1;
-  const weekIndex = Math.floor(lastIndex / slotsPerWeek);
+  const weekOffset = Math.floor(lastIndex / slotsPerWeek);
   const slotIndex = lastIndex % slotsPerWeek;
   const lastSlot = slots[slotIndex];
-  const lastDay = baseWeek
-    .clone()
-    .add(weekIndex, "week")
-    .day(lastSlot.dayOfWeek)
-    .add(lastSlot.endMinute, "minutes")
-    .toDate();
 
-  return { startAt, endAt: lastDay };
+  let firstWeekLastSlotDay = anchor.clone().day(lastSlot.dayOfWeek);
+  if (firstWeekLastSlotDay.isBefore(anchor))
+    firstWeekLastSlotDay.add(1, "week");
+
+  // Cộng thêm 'weekOffset' tuần để ra đúng tuần cuối
+  const lastSessionDay = firstWeekLastSlotDay.clone().add(weekOffset, "weeks");
+
+  const endAt = moment
+    .tz(
+      {
+        year: lastSessionDay.year(),
+        month: lastSessionDay.month(),
+        date: lastSessionDay.date(),
+        hour: 0,
+        minute: 0,
+        second: 0,
+      },
+      timezone
+    )
+    .add(lastSlot.endMinute, "minutes");
+
+  return {
+    startAt: firstStart.toDate(),
+    endAt: endAt.toDate(),
+  };
 }
 module.exports = {
   buildScheduleSignature,

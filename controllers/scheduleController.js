@@ -15,7 +15,7 @@ exports.runScheduler = catchAsync(async (req, res, next) => {
     );
   }
 
-  const { intakeStartDate, intakeEndDate, threshold = 0.7 } = req.body;
+  const { intakeStartDate, intakeEndDate, threshold = 0.7, classStartAnchor } = req.body;
   if (!intakeStartDate || !intakeEndDate) {
     return next(
       new AppError("Vui lòng cung cấp intakeStartDate và intakeEndDate.", 400)
@@ -29,6 +29,7 @@ exports.runScheduler = catchAsync(async (req, res, next) => {
     intakeStartDate,
     intakeEndDate,
     successThreshold: threshold,
+    classStartAnchor: classStartAnchor || null,
     logs: [{ stage: "INIT", message: "Đã nhận lệnh, đang chờ thực thi..." }],
   });
 
