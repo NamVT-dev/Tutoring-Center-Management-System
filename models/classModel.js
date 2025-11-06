@@ -36,7 +36,11 @@ const classSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
+  },
+  classCode: {
+    type: String,
     unique: true,
+    index: true,
   },
   course: {
     type: mongoose.Schema.ObjectId,
@@ -46,13 +50,36 @@ const classSchema = new mongoose.Schema({
   weeklySchedules: [weeklySlotSchema],
   // Buổi phát sinh theo ngày cụ thể (bù/huỷ/đổi)
   oneOffSchedules: [oneOffScheduleSchema],
-  start: String,
-  end: String,
+  startAt: {
+    type: Date,
+    index: true,
+  },
+  endAt: {
+    type: Date,
+    index: true,
+  },
   minStudent: Number,
   maxStudent: Number,
   learningMaterial: String,
   // Ưu tiên GV chính (nếu có)
-  preferredTeacher: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  preferredTeacher: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User" },
+  scheduleSignature: {
+    type: String,
+    unique: true,
+    sparse: true },
+  createdByJob: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "ScheduleJob",
+    index: true,
+  },
+  status: {
+    type: String,
+    enum: ["approved", "archived", "canceled"],
+    default: "approved",
+    index: true,
+  },
 });
 const Class = mongoose.model("Class", classSchema, "classes");
 
