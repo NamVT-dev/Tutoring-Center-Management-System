@@ -212,7 +212,6 @@ const teacherSchema = new mongoose.Schema({
     type: [mongoose.Schema.ObjectId],
     ref: "Class",
   },
-  level: String,
   availability: [availabilitySchema],
   maxHoursPerDay: Number,
   maxHoursPerWeek: Number,

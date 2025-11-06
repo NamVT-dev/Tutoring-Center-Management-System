@@ -13,7 +13,15 @@ route.use(authCtrl.protect);
 route.use(authCtrl.restrictTo("admin"));
 //quan ly giao vien
 route.get("/teachers", adminController.getListTeacher);
+route.post("/teachers", adminController.createTeacher);
 route.get("/teachers/:id", adminController.getTeacherDetail);
+route.post(
+  "/teachers/:id",
+  authCtrl.uploadUserPhoto,
+  authCtrl.resizeUserPhoto,
+  adminController.updateTeacher
+);
+route.delete("/teachers/:id", adminController.deleteTeacher);
 //quan ly room
 route.post("/rooms", roomctrl.createRoom);
 route.patch("/rooms/update/:id", roomctrl.updateRoom);

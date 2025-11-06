@@ -88,4 +88,11 @@ module.exports = class Email {
       "Tài khoản nhân viên TutorCenter đã được tạo!"
     );
   }
+
+  async sendTeacherWelcome() {
+    await this.send(
+      "teacherWelcome",
+      "Tài khoản giáo viên TutorCenter đã được tạo!"
+    );
+  }
 };
