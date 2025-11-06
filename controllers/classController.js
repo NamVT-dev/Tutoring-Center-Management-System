@@ -90,7 +90,11 @@ exports.listClasses = catchAsync(async (req, res, next) => {
       .filter(Boolean)
   );
   const populate = [];
-  if (!include) (includeSet.add("teacher"), includeSet.add("room"));
+  if (!include) (
+    includeSet.add("teacher"), 
+    includeSet.add("room"),
+    includeSet.add("course")
+);
   if (includeSet.has("course"))
     populate.push({ path: "course", select: "name level category" });
   if (includeSet.has("teacher"))
