@@ -3,6 +3,9 @@ const dotenv = require("dotenv");
 const fs = require("fs");
 const path = require("path");
 
+const http = require("http");
+const { Server } = require("socket.io");
+
 const csvFilePath = path.join("public", "results.csv");
 
 if (!fs.existsSync(csvFilePath)) {
@@ -32,8 +35,26 @@ const cronJob = require("./utils/cronTask");
 const DB = process.env.DATABASE;
 mongoose.connect(DB).then(() => console.log("DB connection successful!"));
 
+const server = http.createServer(app);
+
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    method: ["GET", "POST"]
+  }
+});
+
+app.set('socketio', io);
+
+io.on('connection', (socket) => {
+  console.log("người dùng đã kết nối:", socket.id);
+  
+  socket.on('disconnect', () => {
+    console.log('Người dùng ngắt kết nối:', socket.id)
+  });
+});
 const port = process.env.PORT || 9999;
-const server = app.listen(port, () => {
+server.listen(port, () => {
   console.log(`App running on port ${port}...`);
 });
 

@@ -34,13 +34,14 @@ const sessionSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["scheduled", "completed", "canceled"],
+      enum: ["scheduled", "completed", "canceled","published"],
       default: "scheduled",
       index: true,
     },
 
     // Nguồn gốc: từ weekly hay one-off (tuỳ chọn)
     origin: { type: String, enum: ["weekly", "oneoff"], default: "weekly" },
+    createdByJob: { type: mongoose.Schema.Types.ObjectId, ref: 'ScheduleJob', index: true },
   },
   { timestamps: true }
 );

@@ -4,6 +4,7 @@ const bcrypt = require("bcryptjs");
 const crypto = require("node:crypto");
 
 const { generateRandomPin } = require("../utils/passwordUtils");
+const { LEVEL_ORDER } = require("../utils/levels");
 
 const availabilitySchema = new mongoose.Schema(
   {
@@ -13,8 +14,8 @@ const availabilitySchema = new mongoose.Schema(
     shifts: [
       {
         type: String,
-        enum: ["morning", "afternoon", "evening"],
-        required: true,
+        // enum: ["S1", "S2", "S3","S4", "S5", "S6"],
+        // required: true,
       },
     ],
     effective: {
@@ -186,7 +187,26 @@ userSchema.methods.createPasswordResetToken = function () {
 const User = mongoose.model("User", userSchema, "users");
 
 exports.User = User;
+const skillSchema = new mongoose.Schema(
+  {
+    category: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Category",
+      required: true,
+    },
 
+    levels: [
+      {
+        type: String,
+        trim: true,
+        enum: LEVEL_ORDER,
+      },
+    ],
+    includeLowerLevels: { type: Boolean, default: false },
+    anyLevel: { type: Boolean, default: false },
+  },
+  { _id: false }
+);
 const teacherSchema = new mongoose.Schema({
   class: {
     type: [mongoose.Schema.ObjectId],
@@ -199,7 +219,11 @@ const teacherSchema = new mongoose.Schema({
   salary: {
     type: [String],
   },
-  teachCategories: [{ type: String, trim: true }],
+  teachCategories: {
+    type: [mongoose.Schema.ObjectId],
+    ref: "Category",
+  },
+  skills: { type: [skillSchema], default: [] },
 });
 
 exports.Teacher = User.discriminator("teacher", teacherSchema);
