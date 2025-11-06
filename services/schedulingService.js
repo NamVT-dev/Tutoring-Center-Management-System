@@ -135,13 +135,36 @@ async function runAutoScheduler(jobId, io) {
       let isPossible = true;
       let failureReasonCode = null;
 
+      let lockedTeacherId = currentClass.preferredTeacher || null;
+
       for (let i = 0; i < requiredSlotsCount; i++) {
         const placementResult = findPossiblePlacements(
           ctx,
           currentClass,
-          classAssignmentsFound
+          classAssignmentsFound,
+          lockedTeacherId
         );
-
+        // nếu khóa GV mà không hợp lệ -> mở khóa 1 lần và thử lại
+        if (
+          placementResult.failureReason === "LOCKED_TEACHER_UNAVAILABLE" &&
+          lockedTeacherId
+        ) {
+          lockedTeacherId = null;
+          const retry = findPossiblePlacements(
+            ctx,
+            currentClass,
+            classAssignmentsFound,
+            null
+          );
+          if (retry.placements?.length) {
+            placementResult.placements = retry.placements;
+            // giữ failureReason = null
+          } else {
+            isPossible = false;
+            failureReasonCode = retry.failureReason || "ALL_SLOTS_TAKEN";
+            break;
+          }
+        }
         if (placementResult.placements.length > 0) {
           const sortedPlacements = greedySortPlacements(
             ctx,
@@ -149,6 +172,10 @@ async function runAutoScheduler(jobId, io) {
             currentClass
           );
           const bestPlacement = sortedPlacements[0];
+
+          if (!lockedTeacherId) {
+            lockedTeacherId = String(bestPlacement.teacher._id);
+          }
 
           applyAssignment(ctx, currentClass.id, bestPlacement);
           classAssignmentsFound.push(bestPlacement);
@@ -162,6 +189,7 @@ async function runAutoScheduler(jobId, io) {
 
       if (isPossible) {
         // Lưu nhóm assignment data
+        currentClass.lockedTeacherId = lockedTeacherId;
         const allAssignmentData = classAssignmentsFound.map((bestPlacement) => {
           const assignmentData = {
             virtualClassId: currentClass.id,
@@ -174,7 +202,7 @@ async function runAutoScheduler(jobId, io) {
             endMinute:
               bestPlacement.shiftInfo.startMinute +
               currentClass.courseInfo.durationInMinutes,
-            teacher: bestPlacement.teacher._id,
+            teacher: lockedTeacherId,
             room: bestPlacement.room._id,
             violatesAvailability: bestPlacement.violatesAvailability,
           };
@@ -348,7 +376,7 @@ async function finalizeSchedule(jobId) {
           course._id,
           weeklySchedules
         );
-        const { startDate, endDate } = computeClassStartEndExact({
+        const { startAt, endAt } = computeClassStartEndExact({
           timezone,
           weeklySchedules,
           totalSessions: course.session,
@@ -371,8 +399,8 @@ async function finalizeSchedule(jobId) {
           status: "approved",
           createdByJob: jobId, // idempotency flag
           scheduleSignature,
-          startDate,
-          endDate,
+          startAt,
+          endAt,
         });
       }
 
@@ -694,7 +722,12 @@ function greedySortClasses(classList) {
   });
 }
 
-function findPossiblePlacements(ctx, currentClass, existingAssignments = []) {
+function findPossiblePlacements(
+  ctx,
+  currentClass,
+  existingAssignments = [],
+  lockedTeacherId = null
+) {
   const placements = [];
   const course = currentClass.courseInfo;
   const days = ctx.centerConfig.activeDaysOfWeek;
@@ -702,9 +735,20 @@ function findPossiblePlacements(ctx, currentClass, existingAssignments = []) {
   let allSlotsTaken = true;
 
   // Skill filter (mặc định pass nếu không có cấu trúc)
-  const skilledTeachers = ctx.allTeachers.filter((t) =>
-    canTeachCourse(t, course)
-  );
+  const skilledTeachersAll = ctx.allTeachers.filter((t) => {
+    return canTeachCourse(t, course);
+  });
+  let skilledTeachers = skilledTeachersAll;
+  if (lockedTeacherId) {
+    skilledTeachers = skilledTeachersAll.filter(
+      (t) => String(t._id) === String(lockedTeacherId)
+    );
+    if (skilledTeachers.length === 0) {
+      return { placements: [], failureReason: "LOCKED_TEACHER_UNAVAILABLE" };
+    }
+    
+  }
+
   if (skilledTeachers.length === 0) {
     return { placements: [], failureReason: "NO_TEACHER_SKILL" };
   }

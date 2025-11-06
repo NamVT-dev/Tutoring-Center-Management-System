@@ -1,14 +1,26 @@
 const crypto = require("crypto");
 const moment = require("moment-timezone");
-
+function idOf(x) {
+  if (!x) return "null";                  
+  if (typeof x === "string") return x;
+  if (x instanceof mongoose.Types.ObjectId) return x.toString();
+  if (x._id) return idOf(x._id);         
+  return String(x);                       
+}
 function buildScheduleSignature(courseId, weeklySchedules) {
+  const cid = idOf(courseId);
+  for (const s of weeklySchedules) {
+    if (!s.teacher || !s.room) {
+      throw new Error("weeklySchedules slots must have both teacher and room to build signature");
+    }
+  }
   const norm = weeklySchedules
     .map((s) => ({
       d: s.dayOfWeek,
       s: s.startMinute,
       e: s.endMinute,
-      r: String(s.room),
-      t: String(s.teacher),
+      r: idOf(s.room),
+      t: idOf(s.teacher),
     }))
     .sort(
       (a, b) =>
@@ -19,10 +31,9 @@ function buildScheduleSignature(courseId, weeklySchedules) {
         a.t.localeCompare(b.t)
     );
 
-  return crypto
-    .createHash("sha256")
-    .update(JSON.stringify({ c: String(courseId), slots: norm }))
-    .digest("hex");
+  const payload = JSON.stringify({ c: cid, slots: norm });
+
+  return crypto.createHash("sha256").update(payload).digest("hex");
 }
 
 function computeClassStartEndExact({
