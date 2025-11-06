@@ -5,14 +5,25 @@ const attendanceSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Session",
     required: true,
+    unique: true,
   },
-  student: {
-    type: [mongoose.Schema.ObjectId],
-    ref: "User",
+  status: {
+    type: String,
+    enum: ["in-progress", "closed"],
+    default: "in-progress",
   },
-  status: { type: String, enum: ["present", "absent"], default: "absent" },
-  note: String,
+  attendance: [
+    {
+      student: {
+        type: mongoose.Schema.ObjectId,
+        ref: "Student",
+      },
+      status: { type: String, enum: ["present", "absent"], default: "absent" },
+      note: String,
+    },
+  ],
 });
+
 const Attendance = mongoose.model(
   "Attendance",
   attendanceSchema,

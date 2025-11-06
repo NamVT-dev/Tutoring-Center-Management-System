@@ -62,7 +62,7 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["admin", "teacher", "member"],
+      enum: ["admin", "teacher", "member", "staff"],
       default: "member",
     },
     password: {
@@ -236,3 +236,6 @@ const memberSchema = new mongoose.Schema({
 });
 
 exports.Member = User.discriminator("member", memberSchema);
+
+const staffSchema = new mongoose.Schema();
+exports.Staff = User.discriminator("staff", staffSchema);

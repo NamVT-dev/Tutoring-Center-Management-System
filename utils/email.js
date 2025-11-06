@@ -81,4 +81,11 @@ module.exports = class Email {
       "Điểm thi của bạn đã có! Cùng xem kết quả và lộ trình học sắp tới"
     );
   }
+
+  async sendStaffWelcome() {
+    await this.send(
+      "staffWelcome",
+      "Tài khoản nhân viên TutorCenter đã được tạo!"
+    );
+  }
 };
