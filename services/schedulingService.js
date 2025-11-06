@@ -9,7 +9,7 @@ const Student = require("../models/studentModel");
 const Category = require("../models/categoryModel");
 const ScheduleJob = require("../models/scheduleJobModel");
 const mongoose = require("mongoose");
-
+const {LEVEL_INDEX} = require("../utils/levels");
 class SchedulerContext {
   constructor(jobId, io) {
     this.jobId = jobId;
@@ -151,7 +151,7 @@ async function runAutoScheduler(jobId, io) {
           if (bestPlacement.violatesAvailability) {
             ctx.scheduleWarnings.push({
               classInfo: assignmentData.courseName,
-              teacherName: bestPlacement.teacher.profile?.fullname || String(bestPlacement.teacher._id),
+              teacherName: bestPlacement.teacher.profile.fullname || String(bestPlacement.teacher._id),
               message: `Bị xếp vào ca ${bestPlacement.shift} (Ngày ${bestPlacement.day}) mà GV không đăng ký.`,
             });
           }

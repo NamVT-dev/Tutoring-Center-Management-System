@@ -3,7 +3,7 @@ const LEVEL_ORDER = [
   "Pre-Intermediate","Intermediate",
   "Upper-Intermediate","Advanced","Expert"
 ];
-const LEVEL_INDEX = Object.fromEntries(exports.LEVEL_ORDER.map((lv, i) => [lv, i]));
+const LEVEL_INDEX = Object.fromEntries(LEVEL_ORDER.map((lv, i) => [lv, i]));
 
 const IELTS_RANGE = {
   "Starter": [0.0, 3.0],
