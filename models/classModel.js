@@ -5,11 +5,6 @@ const weeklySlotSchema = new mongoose.Schema(
     dayOfWeek: { type: Number, min: 0, max: 6, required: true },
     startMinute: { type: Number, min: 0, max: 1439, required: true },
     endMinute: { type: Number, min: 1, max: 1440, required: true },
-    effective: {
-      start: Date,
-      end: Date,
-    },
-    // tuỳ chọn khoá cứng phòng/GV cho slot này
     room: { type: mongoose.Schema.Types.ObjectId, ref: "Room" },
     teacher: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },

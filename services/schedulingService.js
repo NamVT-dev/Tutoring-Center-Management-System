@@ -10,6 +10,8 @@ const Category = require("../models/categoryModel");
 const ScheduleJob = require("../models/scheduleJobModel");
 const mongoose = require("mongoose");
 const {LEVEL_INDEX} = require("../utils/levels");
+const {computeClassStartEndExact,buildScheduleSignature} = require("../utils/scheduleHelper");
+
 class SchedulerContext {
   constructor(jobId, io) {
     this.jobId = jobId;
@@ -290,9 +292,20 @@ async function finalizeSchedule(jobId) {
           room: a.room,
           teacher: a.teacher,
         }));
+        const scheduleSignature = buildScheduleSignature(course._id, weeklySchedules);
+        const { startAt, endAt } = computeClassStartEndExact({
+          timezone,
+          weeklySchedules,
+          totalSessions: course.session,
+          firstWeekOffset: 1, // tuần sau; đổi 0 nếu muốn tuần này
+        });
+        const classCode =
+          `${String(course.category?.name || "CAT").toUpperCase().replace(/\s+/g, "")}` +
+          `-${String(course.level || "LVL").replace(/\s+/g, "")}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
         classesToCreate.push({
           name: `${first.courseName} | ${weeklySchedules.length}b/tuần`,
+          classCode,
           course: course._id,
           weeklySchedules,
           preferredTeacher: first.teacher,
@@ -300,6 +313,9 @@ async function finalizeSchedule(jobId) {
           minStudent: course.minStudent,
           status: "approved",
           createdByJob: jobId, // idempotency flag
+          scheduleSignature,
+          startAt,
+          endAt,
         });
       }
 
@@ -322,7 +338,8 @@ async function finalizeSchedule(jobId) {
         let baseStartDate = today.clone().add(1, "week");
         for (let i = 0; i < numWeeks; i++) {
           for (const [slotIndex, slot] of newClass.weeklySchedules.entries()) {
-            if (i * slotsPerWeek + slotIndex >= totalSessions) break;
+            const linearIndex = i * slotsPerWeek + slotIndex;  
+            if (linearIndex >= totalSessions) break;
 
             let slotStartDate = baseStartDate.clone().day(slot.dayOfWeek);
             if (i === 0 && slot.dayOfWeek < today.day()) {
@@ -370,6 +387,7 @@ async function finalizeSchedule(jobId) {
               timezone,
               status: "scheduled",
               createdByJob: jobId, // idempotency flag
+              sessionNo: linearIndex + 1,
             });
           }
         }

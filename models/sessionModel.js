@@ -34,14 +34,22 @@ const sessionSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["scheduled", "completed", "canceled","published"],
+      enum: ["scheduled", "completed", "canceled", "published"],
       default: "scheduled",
       index: true,
     },
 
     // Nguồn gốc: từ weekly hay one-off (tuỳ chọn)
     origin: { type: String, enum: ["weekly", "oneoff"], default: "weekly" },
-    createdByJob: { type: mongoose.Schema.Types.ObjectId, ref: 'ScheduleJob', index: true },
+    createdByJob: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ScheduleJob",
+      index: true,
+    },
+    sessionNo: {
+      type: Number,
+      min: 1,
+    },
   },
   { timestamps: true }
 );
@@ -50,6 +58,10 @@ const sessionSchema = new mongoose.Schema(
 sessionSchema.index({ teacher: 1, startAt: 1, endAt: 1 });
 sessionSchema.index({ room: 1, startAt: 1, endAt: 1 });
 sessionSchema.index({ class: 1, startAt: 1 });
+sessionSchema.index(
+  { class: 1, sessionNo: 1 },
+  { unique: true, partialFilterExpression: { sessionNo: { $exists: true } } }
+);
 
 const Session = mongoose.model("Session", sessionSchema, "sessions");
 module.exports = Session;

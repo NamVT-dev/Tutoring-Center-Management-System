@@ -5,6 +5,7 @@ const courseCtrl = require("../controllers/courseController");
 const centerCtrl = require("../controllers/centerController");
 const authCtrl = require("../controllers/authController");
 const categoryCtrl = require("../controllers/categoryController");
+const classCtrl = require("../controllers/classController");
 const route = express.Router();
 
 //auth for admin
@@ -36,4 +37,6 @@ route.get("/center/config", centerCtrl.getConfig);
 route.patch("/center/config", centerCtrl.updateConfig);
 //quan ly category
 route.post("/categories", categoryCtrl.createCategory);
+//quan ly class
+route.get("/classes", classCtrl.listClasses);
 module.exports = route;
