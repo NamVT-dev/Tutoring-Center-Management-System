@@ -62,7 +62,7 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["admin", "teacher", "member"],
+      enum: ["admin", "teacher", "member", "staff"],
       default: "member",
     },
     password: {
@@ -212,7 +212,6 @@ const teacherSchema = new mongoose.Schema({
     type: [mongoose.Schema.ObjectId],
     ref: "Class",
   },
-  level: String,
   availability: [availabilitySchema],
   maxHoursPerDay: Number,
   maxHoursPerWeek: Number,
@@ -236,3 +235,6 @@ const memberSchema = new mongoose.Schema({
 });
 
 exports.Member = User.discriminator("member", memberSchema);
+
+const staffSchema = new mongoose.Schema();
+exports.Staff = User.discriminator("staff", staffSchema);

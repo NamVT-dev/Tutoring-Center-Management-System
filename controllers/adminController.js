@@ -2,6 +2,9 @@ const catchAsync = require("../utils/catchAsync");
 const AppError = require("../utils/appError");
 const { buildPaginatedQuery } = require("../utils/queryHelper");
 const { User, Teacher } = require("../models/userModel");
+const { generateRandomPassword } = require("../utils/passwordUtils");
+const Email = require("../utils/email");
+const factory = require("./handlerFactory");
 
 const getListTeacher = catchAsync(async (req, res) => {
   const { status, page = 1, limit = 10 } = req.query;
@@ -49,7 +52,50 @@ const getTeacherDetail = catchAsync(async (req, res, next) => {
   });
 });
 
+const createTeacher = catchAsync(async (req, res) => {
+  const { email, name, dob, phoneNumber, gender } = req.body;
+  const tempPassword = generateRandomPassword();
+  const teacher = await User.create({
+    email,
+    profile: {
+      fullname: name,
+      dob,
+      phoneNumber,
+      gender,
+    },
+    role: "teacher",
+    password: tempPassword,
+    passwordConfirm: tempPassword,
+    active: true,
+  });
+
+  console.log(`Teacher created - Email: ${email},Password: ${tempPassword}`);
+
+  try {
+    await new Email(teacher, {
+      email: teacher.email,
+      password: tempPassword,
+    }).sendTeacherWelcome();
+  } catch (err) {
+    console.error("Gửi email thất bại:", err);
+  }
+
+  const plainData = teacher.toObject();
+  delete plainData.password;
+
+  res.status(201).json({
+    status: "success",
+    data: plainData,
+  });
+});
+
+const updateTeacher = factory.updateOne(Teacher);
+const deleteTeacher = factory.deleteOne(Teacher);
+
 module.exports = {
   getListTeacher,
   getTeacherDetail,
+  createTeacher,
+  updateTeacher,
+  deleteTeacher,
 };
