@@ -72,7 +72,7 @@ const scheduleJobSchema = new mongoose.Schema(
     intakeStartDate: Date,
     intakeEndDate: Date,
     successThreshold: Number,
-
+    classStartAnchor: { type: Date, default: null },
     //phân tích đầu vào (GĐ 2 & 3)
     inputAnalysis: {
       demandList: {

@@ -36,11 +36,12 @@ const DB = process.env.DATABASE;
 mongoose.connect(DB).then(() => console.log("DB connection successful!"));
 
 const server = http.createServer(app);
-
+const clientURL = process.env.FRONT_END_URI;
 const io = new Server(server, {
   cors: {
-    origin: "*",
-    method: ["GET", "POST"]
+    origin: clientURL,
+    method: ["GET", "POST"],
+    credentials: true
   }
 });
 

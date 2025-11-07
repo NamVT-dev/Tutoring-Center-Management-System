@@ -5,6 +5,7 @@ const courseCtrl = require("../controllers/courseController");
 const centerCtrl = require("../controllers/centerController");
 const authCtrl = require("../controllers/authController");
 const categoryCtrl = require("../controllers/categoryController");
+const classCtrl = require("../controllers/classController");
 const staffCtrl = require("../controllers/staffController");
 const route = express.Router();
 
@@ -48,6 +49,11 @@ route.get("/center/config", centerCtrl.getConfig);
 route.patch("/center/config", centerCtrl.updateConfig);
 //quan ly category
 route.post("/categories", categoryCtrl.createCategory);
+//quan ly class
+route.get("/classes", classCtrl.listClasses);
+route.get("/classes/:id", classCtrl.getClassDetail);
+route.patch("/classes/:id/preview", classCtrl.previewChangeTeacher);
+route.patch("/classes/:id/apply", classCtrl.applyChangeTeacher);
 
 //quan ly staff
 route.get("/staff", staffCtrl.getAllStaff);

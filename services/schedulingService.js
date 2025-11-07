@@ -9,7 +9,13 @@ const Student = require("../models/studentModel");
 const Category = require("../models/categoryModel");
 const ScheduleJob = require("../models/scheduleJobModel");
 const mongoose = require("mongoose");
-const {LEVEL_INDEX} = require("../utils/levels");
+const { LEVEL_INDEX } = require("../utils/levels");
+const {
+  computeClassStartEndExact,
+  buildScheduleSignature,
+  buildClassCode
+} = require("../utils/scheduleHelper");
+
 class SchedulerContext {
   constructor(jobId, io) {
     this.jobId = jobId;
@@ -27,7 +33,7 @@ class SchedulerContext {
     this.scheduleState = { teachers: {}, rooms: {} };
 
     // báo cáo
-    this.successfulAssignments = []; 
+    this.successfulAssignments = [];
     this.failedClasses = [];
     this.scheduleWarnings = [];
   }
@@ -53,15 +59,19 @@ class SchedulerContext {
   }
 }
 
-
 async function runAutoScheduler(jobId, io) {
   const ctx = new SchedulerContext(jobId, io);
   let job = await ScheduleJob.findById(jobId);
   if (!job) return;
 
   try {
-    await ctx.updateJob("START", "Bắt đầu chạy thuật toán", { status: "running" });
-    await ctx.updateJob("LOAD", "Đang tải tài nguyên (GV, ROOM, COURSE, CONFIG)");
+    await ctx.updateJob("START", "Bắt đầu chạy thuật toán", {
+      status: "running",
+    });
+    await ctx.updateJob(
+      "LOAD",
+      "Đang tải tài nguyên (GV, ROOM, COURSE, CONFIG)"
+    );
     await loadResources(ctx);
 
     if (ctx.allTeachers.length === 0 || ctx.allRooms.length === 0) {
@@ -73,17 +83,20 @@ async function runAutoScheduler(jobId, io) {
       !Array.isArray(ctx.centerConfig?.shifts) ||
       ctx.centerConfig.shifts.length === 0
     ) {
-      throw new Error("Cấu hình trung tâm thiếu 'activeDaysOfWeek' hoặc 'shifts'.");
+      throw new Error(
+        "Cấu hình trung tâm thiếu 'activeDaysOfWeek' hoặc 'shifts'."
+      );
     }
 
     await ctx.updateJob(
       "ANALYZE",
       `Đang phân tích nhu cầu từ ${job.intakeStartDate.toDateString()}...`
     );
-    const { virtualClassList, pendingList, demandList } = await createVirtualClassList(ctx, {
-      intakeStartDate: job.intakeStartDate,
-      intakeEndDate: job.intakeEndDate,
-    });
+    const { virtualClassList, pendingList, demandList } =
+      await createVirtualClassList(ctx, {
+        intakeStartDate: job.intakeStartDate,
+        intakeEndDate: job.intakeEndDate,
+      });
 
     await ctx.updateJob(
       "ANALYZE_DONE",
@@ -92,15 +105,22 @@ async function runAutoScheduler(jobId, io) {
     );
 
     if (virtualClassList.length === 0) {
-      await ctx.updateJob("DRAFT_READY", "Không có nhu cầu, kết thúc. Chờ Admin duyệt.", {
-        status: "draft",
-      });
+      await ctx.updateJob(
+        "DRAFT_READY",
+        "Không có nhu cầu, kết thúc. Chờ Admin duyệt.",
+        {
+          status: "draft",
+        }
+      );
       if (io) io.emit("job_complete", { jobId });
       return;
     }
 
     // SCHEDULE
-    await ctx.updateJob("SCHEDULE_START", `Bắt đầu xếp lịch cho ${virtualClassList.length} lớp...`);
+    await ctx.updateJob(
+      "SCHEDULE_START",
+      `Bắt đầu xếp lịch cho ${virtualClassList.length} lớp...`
+    );
     initializeScheduleState(ctx);
 
     // Prefill lịch thật đã có từ Class.weeklySchedules để chặn xung đột
@@ -116,24 +136,61 @@ async function runAutoScheduler(jobId, io) {
       let isPossible = true;
       let failureReasonCode = null;
 
-      for (let i = 0; i < requiredSlotsCount; i++) {
-        const placementResult = findPossiblePlacements(ctx, currentClass, classAssignmentsFound);
+      let lockedTeacherId = currentClass.preferredTeacher || null;
 
+      for (let i = 0; i < requiredSlotsCount; i++) {
+        const placementResult = findPossiblePlacements(
+          ctx,
+          currentClass,
+          classAssignmentsFound,
+          lockedTeacherId
+        );
+        // nếu khóa GV mà không hợp lệ -> mở khóa 1 lần và thử lại
+        if (
+          placementResult.failureReason === "LOCKED_TEACHER_UNAVAILABLE" &&
+          lockedTeacherId
+        ) {
+          lockedTeacherId = null;
+          const retry = findPossiblePlacements(
+            ctx,
+            currentClass,
+            classAssignmentsFound,
+            null
+          );
+          if (retry.placements?.length) {
+            placementResult.placements = retry.placements;
+            // giữ failureReason = null
+          } else {
+            isPossible = false;
+            failureReasonCode = retry.failureReason || "ALL_SLOTS_TAKEN";
+            break;
+          }
+        }
         if (placementResult.placements.length > 0) {
-          const sortedPlacements = greedySortPlacements(ctx, placementResult.placements, currentClass);
+          const sortedPlacements = greedySortPlacements(
+            ctx,
+            placementResult.placements,
+            currentClass
+          );
           const bestPlacement = sortedPlacements[0];
+
+          if (!lockedTeacherId) {
+            lockedTeacherId = String(bestPlacement.teacher._id);
+          }
 
           applyAssignment(ctx, currentClass.id, bestPlacement);
           classAssignmentsFound.push(bestPlacement);
         } else {
           isPossible = false;
-          failureReasonCode = placementResult.failureReason || "ALL_SLOTS_TAKEN";
+          failureReasonCode =
+            placementResult.failureReason || "ALL_SLOTS_TAKEN";
           break;
         }
       }
 
       if (isPossible) {
         // Lưu nhóm assignment data
+        currentClass.lockedTeacherId = lockedTeacherId;
         const allAssignmentData = classAssignmentsFound.map((bestPlacement) => {
           const assignmentData = {
             virtualClassId: currentClass.id,
@@ -143,15 +200,19 @@ async function runAutoScheduler(jobId, io) {
             day: bestPlacement.day,
             shiftName: bestPlacement.shift,
             startMinute: bestPlacement.shiftInfo.startMinute,
-            endMinute: bestPlacement.shiftInfo.startMinute + currentClass.courseInfo.durationInMinutes,
-            teacher: bestPlacement.teacher._id,
+            endMinute:
+              bestPlacement.shiftInfo.startMinute +
+              currentClass.courseInfo.durationInMinutes,
+            teacher: lockedTeacherId,
             room: bestPlacement.room._id,
             violatesAvailability: bestPlacement.violatesAvailability,
           };
           if (bestPlacement.violatesAvailability) {
             ctx.scheduleWarnings.push({
               classInfo: assignmentData.courseName,
-              teacherName: bestPlacement.teacher.profile.fullname || String(bestPlacement.teacher._id),
+              teacherName:
+                bestPlacement.teacher.profile.fullname ||
+                String(bestPlacement.teacher._id),
               message: `Bị xếp vào ca ${bestPlacement.shift} (Ngày ${bestPlacement.day}) mà GV không đăng ký.`,
             });
           }
@@ -168,12 +229,17 @@ async function runAutoScheduler(jobId, io) {
           classInfo: `${currentClass.courseInfo.category.name} ${currentClass.courseInfo.level}`,
           studentCount: currentClass.studentCount,
           reasonCode: failureReasonCode,
-          reasonMessage: getFailureMessage(failureReasonCode) + ` (Không tìm đủ ${requiredSlotsCount} buổi/tuần)`,
+          reasonMessage:
+            getFailureMessage(failureReasonCode) +
+            ` (Không tìm đủ ${requiredSlotsCount} buổi/tuần)`,
         });
       }
 
       if ((index + 1) % 5 === 0 || index + 1 === totalCount) {
-        await ctx.updateJob("SCHEDULE_PROGRESS", `Đang xếp lịch... (${index + 1}/${totalCount})`);
+        await ctx.updateJob(
+          "SCHEDULE_PROGRESS",
+          `Đang xếp lịch... (${index + 1}/${totalCount})`
+        );
       }
     }
 
@@ -190,7 +256,11 @@ async function runAutoScheduler(jobId, io) {
     await ctx.updateJob(
       "DRAFT_READY",
       `Đã xếp lịch xong. Tỷ lệ: ${successCount}/${totalCount}.`,
-      { status: "draft", draftSchedule: ctx.successfulAssignments, resultReport: finalReport }
+      {
+        status: "draft",
+        draftSchedule: ctx.successfulAssignments,
+        resultReport: finalReport,
+      }
     );
 
     if (successRate < job.successThreshold) {
@@ -208,18 +278,24 @@ async function runAutoScheduler(jobId, io) {
     try {
       job = await ScheduleJob.findById(jobId);
       if (job) {
-        job.logs.push({ stage: "ERROR", message: error.message, isError: true });
+        job.logs.push({
+          stage: "ERROR",
+          message: error.message,
+          isError: true,
+        });
         job.status = "system_error";
         await job.save();
       }
       if (ctx.io) ctx.io.emit("job_error", { jobId, error: error.message });
     } catch (dbError) {
-      console.error(`[Job ${jobId}] Lỗi kép! Không thể lưu trạng thái lỗi:`, dbError);
+      console.error(
+        `[Job ${jobId}] Lỗi kép! Không thể lưu trạng thái lỗi:`,
+        dbError
+      );
     }
     await Center.findOneAndUpdate({ key: "default" }, { isScheduling: false });
   }
 }
-
 
 async function finalizeSchedule(jobId) {
   const job = await ScheduleJob.findById(jobId);
@@ -235,6 +311,9 @@ async function finalizeSchedule(jobId) {
   const centerConfig = await Center.findOne({ key: "default" }).lean();
   const timezone = centerConfig?.timezone || "Asia/Bangkok";
 
+  let anchor = job.classStartAnchor
+    ? moment.tz(job.classStartAnchor, timezone).startOf("day")
+    : moment.tz(timezone).startOf("day");
   // Gom courseIds (unique)
   const courseIds = new Set();
   draftSchedule.forEach((group) => {
@@ -246,12 +325,16 @@ async function finalizeSchedule(jobId) {
   // Idempotency: nếu đã từng finalize cho job này → không cho chạy lại
   const existingByJob = await Class.findOne({ createdByJob: jobId }).lean();
   if (existingByJob) {
-    throw new Error("Job này đã được finalize trước đó (phát hiện createdByJob).");
+    throw new Error(
+      "Job này đã được finalize trước đó (phát hiện createdByJob)."
+    );
   }
 
   // Freeze check trước khi tạo:
   // build occupancy từ Class.weeklySchedules hiện có (không lấy những class canceled)
-  const currentOccupancy = await buildWeeklyOccupancyFromClasses({ excludeJobId: jobId });
+  const currentOccupancy = await buildWeeklyOccupancyFromClasses({
+    excludeJobId: jobId,
+  });
 
   // Validate mọi assignment trong draftSchedule không trùng với occupancy hiện tại
   for (const group of draftSchedule) {
@@ -290,9 +373,25 @@ async function finalizeSchedule(jobId) {
           room: a.room,
           teacher: a.teacher,
         }));
+        const scheduleSignature = buildScheduleSignature(
+          course._id,
+          weeklySchedules
+        );
+        const { startAt, endAt } = computeClassStartEndExact({
+          timezone,
+          weeklySchedules,
+          totalSessions: course.session,
+          anchorDate: anchor,
+        });
+        const classCode = await buildClassCode(course);
+          // `${String(course.category?.name || "CAT")
+          //   .toUpperCase()
+          //   .replace(/\s+/g, "")}` +
+          // `-${String(course.level || "LVL").replace(/\s+/g, "")}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
         classesToCreate.push({
           name: `${first.courseName} | ${weeklySchedules.length}b/tuần`,
+          classCode,
           course: course._id,
           weeklySchedules,
           preferredTeacher: first.teacher,
@@ -300,6 +399,9 @@ async function finalizeSchedule(jobId) {
           minStudent: course.minStudent,
           status: "approved",
           createdByJob: jobId, // idempotency flag
+          scheduleSignature,
+          startAt,
+          endAt,
         });
       }
 
@@ -309,6 +411,7 @@ async function finalizeSchedule(jobId) {
 
       // Tạo sessions theo tuần kế tiếp
       const today = moment.tz(timezone).startOf("day");
+      if (anchor.isBefore(today)) anchor = today.clone();
       const sessionsToCreate = [];
 
       for (const newClass of createdClasses) {
@@ -319,16 +422,18 @@ async function finalizeSchedule(jobId) {
         const slotsPerWeek = newClass.weeklySchedules.length;
         const numWeeks = Math.ceil(totalSessions / Math.max(1, slotsPerWeek));
 
-        let baseStartDate = today.clone().add(1, "week");
+        let baseStartDate = anchor.clone();
         for (let i = 0; i < numWeeks; i++) {
           for (const [slotIndex, slot] of newClass.weeklySchedules.entries()) {
-            if (i * slotsPerWeek + slotIndex >= totalSessions) break;
+            const linearIndex = i * slotsPerWeek + slotIndex;
+            if (linearIndex >= totalSessions) break;
 
-            let slotStartDate = baseStartDate.clone().day(slot.dayOfWeek);
-            if (i === 0 && slot.dayOfWeek < today.day()) {
-              slotStartDate.add(1, "week");
+            // Ngày đầu tiên khớp dayOfWeek trên/ sau anchor
+            let firstWeekSlotDate = baseStartDate.clone().day(slot.dayOfWeek);
+            if (firstWeekSlotDate.isBefore(baseStartDate)) {
+              firstWeekSlotDate.add(1, "week");
             }
-            const sessionDate = slotStartDate.clone().add(i, "weeks");
+            const sessionDate = firstWeekSlotDate.clone().add(i, "weeks");
 
             const startAt = moment
               .tz(
@@ -370,6 +475,7 @@ async function finalizeSchedule(jobId) {
               timezone,
               status: "scheduled",
               createdByJob: jobId, // idempotency flag
+              sessionNo: linearIndex + 1,
             });
           }
         }
@@ -396,7 +502,9 @@ async function finalizeSchedule(jobId) {
 
     return {
       createdClasses,
-      createdSessionsCount: await Session.countDocuments({ createdByJob: jobId }),
+      createdSessionsCount: await Session.countDocuments({
+        createdByJob: jobId,
+      }),
     };
   } finally {
     mongoSession.endSession();
@@ -417,13 +525,14 @@ async function loadResources(ctx) {
   const centerPromise = Center.findOne({ key: "default" }).lean();
   const categoryPromise = Category.find().lean();
 
-  const [teachers, rooms, coursesArray, centerConfig, categoriesArray] = await Promise.all([
-    teacherPromise,
-    roomPromise,
-    coursePromise,
-    centerPromise,
-    categoryPromise,
-  ]);
+  const [teachers, rooms, coursesArray, centerConfig, categoriesArray] =
+    await Promise.all([
+      teacherPromise,
+      roomPromise,
+      coursePromise,
+      centerPromise,
+      categoryPromise,
+    ]);
 
   ctx.allTeachers = teachers || [];
   ctx.allRooms = rooms || [];
@@ -472,7 +581,10 @@ async function createVirtualClassList(ctx, { intakeStartDate, intakeEndDate }) {
       testScore: { $gte: inputMinScore, $lte: inputMaxScore },
     };
 
-    const demandResult = await Student.aggregate([{ $match: matchFilter }, { $count: "studentCount" }]);
+    const demandResult = await Student.aggregate([
+      { $match: matchFilter },
+      { $count: "studentCount" },
+    ]);
     const studentCount = demandResult.length ? demandResult[0].studentCount : 0;
 
     demandList.push({
@@ -492,7 +604,10 @@ async function createVirtualClassList(ctx, { intakeStartDate, intakeEndDate }) {
     }
 
     let remaining = studentCount;
-    const effectiveMax = Math.min(maxStudent, ctx.maxAvailableCapacity || maxStudent);
+    const effectiveMax = Math.min(
+      maxStudent,
+      ctx.maxAvailableCapacity || maxStudent
+    );
 
     while (remaining >= minStudent) {
       const classSize = Math.max(Math.min(remaining, effectiveMax), minStudent);
@@ -545,7 +660,6 @@ function initializeScheduleState(ctx) {
   }
 }
 
-
 async function prefillExistingWeeklySchedules(ctx) {
   const existingClasses = await Class.find({
     status: { $ne: "canceled" },
@@ -559,7 +673,11 @@ async function prefillExistingWeeklySchedules(ctx) {
 
     for (const slot of c.weeklySchedules || []) {
       const day = slot.dayOfWeek;
-      const shiftName = findShiftNameByMinute(ctx.centerConfig, slot.startMinute, slot.endMinute);
+      const shiftName = findShiftNameByMinute(
+        ctx.centerConfig,
+        slot.startMinute,
+        slot.endMinute
+      );
       if (!shiftName) continue;
 
       // Mark teacher busy
@@ -605,7 +723,12 @@ function greedySortClasses(classList) {
   });
 }
 
-function findPossiblePlacements(ctx, currentClass, existingAssignments = []) {
+function findPossiblePlacements(
+  ctx,
+  currentClass,
+  existingAssignments = [],
+  lockedTeacherId = null
+) {
   const placements = [];
   const course = currentClass.courseInfo;
   const days = ctx.centerConfig.activeDaysOfWeek;
@@ -613,13 +736,28 @@ function findPossiblePlacements(ctx, currentClass, existingAssignments = []) {
   let allSlotsTaken = true;
 
   // Skill filter (mặc định pass nếu không có cấu trúc)
-  const skilledTeachers = ctx.allTeachers.filter((t) => canTeachCourse(t, course));
+  const skilledTeachersAll = ctx.allTeachers.filter((t) => {
+    return canTeachCourse(t, course);
+  });
+  let skilledTeachers = skilledTeachersAll;
+  if (lockedTeacherId) {
+    skilledTeachers = skilledTeachersAll.filter(
+      (t) => String(t._id) === String(lockedTeacherId)
+    );
+    if (skilledTeachers.length === 0) {
+      return { placements: [], failureReason: "LOCKED_TEACHER_UNAVAILABLE" };
+    }
+    
+  }
+
   if (skilledTeachers.length === 0) {
     return { placements: [], failureReason: "NO_TEACHER_SKILL" };
   }
 
   // Room đủ sức chứa
-  const capacityRooms = ctx.allRooms.filter((r) => (r.capacity || 0) >= currentClass.studentCount);
+  const capacityRooms = ctx.allRooms.filter(
+    (r) => (r.capacity || 0) >= currentClass.studentCount
+  );
   if (capacityRooms.length === 0) {
     return { placements: [], failureReason: "NO_ROOM_CAPACITY" };
   }
@@ -627,28 +765,38 @@ function findPossiblePlacements(ctx, currentClass, existingAssignments = []) {
   for (const day of days) {
     for (const shift of shifts) {
       // ca phải đủ dài cho duration
-      if (shift.endMinute - shift.startMinute < course.durationInMinutes) continue;
+      if (shift.endMinute - shift.startMinute < course.durationInMinutes)
+        continue;
 
       // spacing (P1): không cho 2 buổi sát ngày (min gap = 1)
       if (violatesSpacing(existingAssignments, day, 1)) continue;
 
       // không trùng day/shift của chính lớp này
-      const alreadyUsed = existingAssignments.some((a) => a.day === day && a.shift === shift.name);
+      const alreadyUsed = existingAssignments.some(
+        (a) => a.day === day && a.shift === shift.name
+      );
       if (alreadyUsed) continue;
 
       for (const teacher of skilledTeachers) {
         const tid = String(teacher._id);
-        if (ctx.scheduleState.teachers[tid]?.[day]?.[shift.name] !== null) continue;
+        if (ctx.scheduleState.teachers[tid]?.[day]?.[shift.name] !== null)
+          continue;
 
         let violatesAvailability = false;
-        const teacherAvailability = teacher.availability?.find((a) => a.dayOfWeek === day);
-        if (!teacherAvailability || !teacherAvailability.shifts?.includes(shift.name)) {
+        const teacherAvailability = teacher.availability?.find(
+          (a) => a.dayOfWeek === day
+        );
+        if (
+          !teacherAvailability ||
+          !teacherAvailability.shifts?.includes(shift.name)
+        ) {
           violatesAvailability = true;
         }
 
         for (const room of capacityRooms) {
           const rid = String(room._id);
-          if (ctx.scheduleState.rooms[rid]?.[day]?.[shift.name] !== null) continue;
+          if (ctx.scheduleState.rooms[rid]?.[day]?.[shift.name] !== null)
+            continue;
 
           allSlotsTaken = false;
           placements.push({
@@ -681,13 +829,17 @@ function greedySortPlacements(ctx, placements, currentClass) {
 
     // ưu tiên preferredTeacher
     if (currentClass.preferredTeacher) {
-      if (String(a.teacher._id) === String(currentClass.preferredTeacher)) scoreA += 100;
-      if (String(b.teacher._id) === String(currentClass.preferredTeacher)) scoreB += 100;
+      if (String(a.teacher._id) === String(currentClass.preferredTeacher))
+        scoreA += 100;
+      if (String(b.teacher._id) === String(currentClass.preferredTeacher))
+        scoreB += 100;
     }
 
     // cân bằng theo ngày
-    const wA = ctx.scheduleState.teachers[String(a.teacher._id)][a.day].workload;
-    const wB = ctx.scheduleState.teachers[String(b.teacher._id)][b.day].workload;
+    const wA =
+      ctx.scheduleState.teachers[String(a.teacher._id)][a.day].workload;
+    const wB =
+      ctx.scheduleState.teachers[String(b.teacher._id)][b.day].workload;
     if (wA >= 2) scoreA -= 50;
     if (wB >= 2) scoreB -= 50;
 
@@ -742,7 +894,6 @@ function getFailureMessage(reasonCode) {
   }
 }
 
-
 function canTeachCourse(teacher, course) {
   const catId = String(course.category?._id || course.category);
   const level = String(course.level || "").trim();
@@ -751,12 +902,11 @@ function canTeachCourse(teacher, course) {
     return teacher.skills.some((s) => {
       if (String(s.category) !== catId) return false;
 
-      if (s.anyLevel) return true; // dạy mọi level trong category này
+      if (s.anyLevel) return true; 
 
       const lvls = Array.isArray(s.levels) ? s.levels : [];
       if (lvls.includes(level)) return true;
 
-      // lấy level cao nhất trong levels, cho dạy tất cả level thấp hơn
       if (s.includeLowerLevels && lvls.length) {
         const maxIdx = Math.max(...lvls.map((lv) => LEVEL_INDEX[lv] ?? -1));
         const targetIdx = LEVEL_INDEX[level] ?? -1;
@@ -766,21 +916,18 @@ function canTeachCourse(teacher, course) {
     });
   }
 
-  // Không có dữ liệu kỹ năng → hiện bạn đang chặn cứng
   return false;
 }
-
 
 function violatesSpacing(existingAssignments, newDay, minGapDays = 1) {
   if (!existingAssignments.length) return false;
   for (const a of existingAssignments) {
     const d = Math.abs(a.day - newDay);
-    const wrap = Math.min(d, 7 - d); // khoảng cách có xét vòng tuần
-    if (wrap < minGapDays + 1) return true; // wrap 0 = cùng ngày; wrap 1 = sát ngày
+    const wrap = Math.min(d, 7 - d); 
+    if (wrap < minGapDays + 1) return true; 
   }
   return false;
 }
-
 
 async function buildWeeklyOccupancyFromClasses({ excludeJobId } = {}) {
   const classes = await Class.find({ status: { $ne: "canceled" } })
@@ -790,9 +937,10 @@ async function buildWeeklyOccupancyFromClasses({ excludeJobId } = {}) {
   const roomSlots = new Set();
 
   for (const c of classes) {
-    if (excludeJobId && String(c.createdByJob || "") === String(excludeJobId)) continue;
+    if (excludeJobId && String(c.createdByJob || "") === String(excludeJobId))
+      continue;
     for (const s of c.weeklySchedules || []) {
-      const shiftName = "ANY"; 
+      const shiftName = "ANY";
       const tKey = `${s.teacher}::${s.dayOfWeek}::${shiftName}`;
       const rKey = `${s.room}::${s.dayOfWeek}::${shiftName}`;
       teacherSlots.add(tKey);
@@ -805,4 +953,5 @@ async function buildWeeklyOccupancyFromClasses({ excludeJobId } = {}) {
 module.exports = {
   runAutoScheduler,
   finalizeSchedule,
+  canTeachCourse
 };
