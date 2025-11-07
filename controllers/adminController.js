@@ -89,7 +89,28 @@ const createTeacher = catchAsync(async (req, res) => {
   });
 });
 
-const updateTeacher = factory.updateOne(Teacher);
+const updateTeacher = catchAsync(async (req, res, next) => {
+  const teacher = await Teacher.findById(req.params.id);
+  if (!teacher) return next(new AppError("Không tìm thấy giáo viên", 404));
+  if (req.file) req.body.profile["photo"] = req.file.filename;
+
+  // 3) Update user document
+  const updatedTeacher = await Teacher.findByIdAndUpdate(
+    req.params.id,
+    req.body,
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
+
+  res.status(200).json({
+    status: "success",
+    data: {
+      user: updatedTeacher,
+    },
+  });
+});
 const deleteTeacher = factory.deleteOne(Teacher);
 
 module.exports = {
