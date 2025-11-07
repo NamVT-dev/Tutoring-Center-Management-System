@@ -13,6 +13,7 @@ const { LEVEL_INDEX } = require("../utils/levels");
 const {
   computeClassStartEndExact,
   buildScheduleSignature,
+  buildClassCode
 } = require("../utils/scheduleHelper");
 
 class SchedulerContext {
@@ -382,11 +383,11 @@ async function finalizeSchedule(jobId) {
           totalSessions: course.session,
           anchorDate: anchor,
         });
-        const classCode =
-          `${String(course.category?.name || "CAT")
-            .toUpperCase()
-            .replace(/\s+/g, "")}` +
-          `-${String(course.level || "LVL").replace(/\s+/g, "")}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        const classCode = await buildClassCode(course);
+          // `${String(course.category?.name || "CAT")
+          //   .toUpperCase()
+          //   .replace(/\s+/g, "")}` +
+          // `-${String(course.level || "LVL").replace(/\s+/g, "")}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
         classesToCreate.push({
           name: `${first.courseName} | ${weeklySchedules.length}b/tuần`,
@@ -901,12 +902,11 @@ function canTeachCourse(teacher, course) {
     return teacher.skills.some((s) => {
       if (String(s.category) !== catId) return false;
 
-      if (s.anyLevel) return true; // dạy mọi level trong category này
+      if (s.anyLevel) return true; 
 
       const lvls = Array.isArray(s.levels) ? s.levels : [];
       if (lvls.includes(level)) return true;
 
-      // lấy level cao nhất trong levels, cho dạy tất cả level thấp hơn
       if (s.includeLowerLevels && lvls.length) {
         const maxIdx = Math.max(...lvls.map((lv) => LEVEL_INDEX[lv] ?? -1));
         const targetIdx = LEVEL_INDEX[level] ?? -1;
@@ -916,7 +916,6 @@ function canTeachCourse(teacher, course) {
     });
   }
 
-  // Không có dữ liệu kỹ năng → hiện bạn đang chặn cứng
   return false;
 }
 
@@ -924,8 +923,8 @@ function violatesSpacing(existingAssignments, newDay, minGapDays = 1) {
   if (!existingAssignments.length) return false;
   for (const a of existingAssignments) {
     const d = Math.abs(a.day - newDay);
-    const wrap = Math.min(d, 7 - d); // khoảng cách có xét vòng tuần
-    if (wrap < minGapDays + 1) return true; // wrap 0 = cùng ngày; wrap 1 = sát ngày
+    const wrap = Math.min(d, 7 - d); 
+    if (wrap < minGapDays + 1) return true; 
   }
   return false;
 }
@@ -954,4 +953,5 @@ async function buildWeeklyOccupancyFromClasses({ excludeJobId } = {}) {
 module.exports = {
   runAutoScheduler,
   finalizeSchedule,
+  canTeachCourse
 };

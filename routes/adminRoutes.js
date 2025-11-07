@@ -40,4 +40,6 @@ route.post("/categories", categoryCtrl.createCategory);
 //quan ly class
 route.get("/classes", classCtrl.listClasses);
 route.get("/classes/:id", classCtrl.getClassDetail);
+route.patch("/classes/:id/preview", classCtrl.previewChangeTeacher);
+route.patch("/classes/:id/apply", classCtrl.applyChangeTeacher);
 module.exports = route;

@@ -4,10 +4,11 @@ const { buildPaginatedQuery } = require("../utils/queryHelper");
 const Class = require("../models/classModel");
 const Session = require("../models/sessionModel");
 const Center = require("../models/centerModel");
-const mongoose = require("mongoose");
-function findShiftByName(centerConfig, shiftName) {
-  return (centerConfig?.shifts || []).find((s) => s.name === shiftName) || null;
-}
+const Course = require("../models/courseModel");
+const {
+  previewChangeTeacher,
+  applyChangeTeacher,
+} = require("../services/classChangeService");
 
 exports.listClasses = catchAsync(async (req, res, next) => {
   const {
@@ -90,11 +91,10 @@ exports.listClasses = catchAsync(async (req, res, next) => {
       .filter(Boolean)
   );
   const populate = [];
-  if (!include) (
-    includeSet.add("teacher"), 
-    includeSet.add("room"),
-    includeSet.add("course")
-);
+  if (!include)
+    (includeSet.add("teacher"),
+      includeSet.add("room"),
+      includeSet.add("course"));
   if (includeSet.has("course"))
     populate.push({ path: "course", select: "name level category" });
   if (includeSet.has("teacher"))
@@ -211,4 +211,26 @@ exports.getClassDetail = catchAsync(async (req, res, next) => {
       sessions,
     },
   });
+});
+
+exports.previewChangeTeacher = catchAsync(async (req, res) => {
+  const result = await previewChangeTeacher({
+    classId: req.params.id,
+    newTeacher: req.body.newTeacher,
+    scope: req.body.scope || {},
+    check: req.body.check || { skill: true, conflict: true },
+  });
+  res.status(200).json({ status: "success", preview: result });
+});
+
+exports.applyChangeTeacher = catchAsync(async (req, res) => {
+  const result = await applyChangeTeacher({
+    classId: req.params.id,
+    newTeacher: req.body.newTeacher,
+    scope: req.body.scope || {},
+    check: req.body.check || { skill: true, conflict: true },
+    updatePreferred: !!req.body.updatePreferred,
+    allowBlocked: !!req.body.allowBlocked,
+  });
+  res.status(200).json({ status: "success", applied: result });
 });

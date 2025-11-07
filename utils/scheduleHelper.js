@@ -1,17 +1,20 @@
 const crypto = require("crypto");
 const moment = require("moment-timezone");
+const mongoose = require("mongoose");
 function idOf(x) {
-  if (!x) return "null";                  
+  if (!x) return "null";
   if (typeof x === "string") return x;
   if (x instanceof mongoose.Types.ObjectId) return x.toString();
-  if (x._id) return idOf(x._id);         
-  return String(x);                       
+  if (x._id) return idOf(x._id);
+  return String(x);
 }
 function buildScheduleSignature(courseId, weeklySchedules) {
   const cid = idOf(courseId);
   for (const s of weeklySchedules) {
     if (!s.teacher || !s.room) {
-      throw new Error("weeklySchedules slots must have both teacher and room to build signature");
+      throw new Error(
+        "weeklySchedules slots must have both teacher and room to build signature"
+      );
     }
   }
   const norm = weeklySchedules
@@ -108,7 +111,15 @@ function computeClassStartEndExact({
     endAt: endAt.toDate(),
   };
 }
+function buildClassCode(course) {
+  const cat = String(course?.category?.name || "CAT").toUpperCase().replace(/\s+/g, "");
+  const lvl = String(course?.level || "LVL").replace(/\s+/g, "");
+  const now = moment().format("YYYYMMDD-HHmm");
+  const rnd = String(Math.floor(Math.random() * 1000)).padStart(3, "0");
+  return `${cat}-${lvl}-${now}-${rnd}`;
+}
 module.exports = {
   buildScheduleSignature,
   computeClassStartEndExact,
+  buildClassCode
 };
