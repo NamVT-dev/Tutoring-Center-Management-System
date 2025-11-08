@@ -3,6 +3,7 @@ const adminController = require("../controllers/adminController");
 const authController = require("../controllers/authController");
 const paymentController = require("../controllers/paymentController");
 const classController = require("../controllers/classController");
+const testController = require("../controllers/testController");
 
 const route = express.Router();
 
@@ -25,5 +26,8 @@ route.get("/transaction/:id", paymentController.getOne);
 route.post("/class", classController.createClass);
 route.patch("/class/:id", classController.updateClass);
 route.delete("/class/:id", classController.deleteClass);
+
+//test-score
+route.get("/export-score", testController.exportScore);
 
 module.exports = route;

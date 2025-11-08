@@ -72,3 +72,7 @@ exports.registerTest = catchAsync(async (req, res, next) => {
     .status(201)
     .json({ message: "Đăng ký thành công! Hãy kiểm tra email của bạn." });
 });
+
+exports.exportScore = catchAsync(async (req, res) => {
+  res.download(csvFilePath, "score-template.csv");
+});
