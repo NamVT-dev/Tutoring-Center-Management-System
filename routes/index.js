@@ -8,6 +8,7 @@ const memberRoutes = require("./memberRoutes");
 const scheduleRoutes = require("./scheduleRoutes");
 const attendanceRoutes = require("./attendanceRoutes");
 const notificationRoutes = require("./notificationRoutes");
+const paymentRoutes = require("./paymentRoutes");
 const route = express.Router();
 
 route.use("/auth", authRoutes);
@@ -18,6 +19,7 @@ route.use("/categories", categoryRoutes);
 route.use("/schedule", scheduleRoutes);
 route.use("/attendance", attendanceRoutes);
 route.use("/notification", notificationRoutes);
+route.use("/payment", paymentRoutes);
 route.use("/", memberRoutes);
 
 module.exports = route;
