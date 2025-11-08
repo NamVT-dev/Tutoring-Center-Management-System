@@ -7,5 +7,7 @@ const route = express.Router();
 route.use(authController.protect);
 route.get("/", paymentController.getAllPayments);
 route.get("/:id", paymentController.getOne);
+route.post("/webhook", paymentController.handlePaymentWebhook);
 
 module.exports = route;
+

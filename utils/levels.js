@@ -86,9 +86,23 @@ function suggestCourseForStudent(student, allCourses) {
   );
 }
 
-// =======================
-// EXPORTS
-// =======================
+function getRoadmapLevels(currentLevel, targetLevel) {
+  const currentIndex = LEVEL_INDEX[currentLevel];
+  const targetIndex = LEVEL_INDEX[targetLevel];
+
+  if (currentIndex === undefined || targetIndex === undefined) {
+    throw new Error("Level đầu vào hoặc mục tiêu không hợp lệ.");
+  }
+
+  if (currentIndex > targetIndex) {
+    return []; // Đã đạt
+  }
+
+  // Trả về các level từ (hiện tại + 1) đến (mục tiêu)
+  const result= LEVEL_ORDER.slice(currentIndex, targetIndex + 1);
+  console.log("[DEBUG] Resulting roadmap:", result);
+  return result;
+}
 
 module.exports = {
   LEVEL_ORDER,
@@ -96,4 +110,5 @@ module.exports = {
   mapScoreToLevel,
   canTeachCourse,
   suggestCourseForStudent,
+  getRoadmapLevels
 };

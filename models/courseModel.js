@@ -15,9 +15,33 @@ const courseSchema = new mongoose.Schema({
   },
   level: {
     type: String,
+    required: true,
+    trim: true,
   },
   session: { type: Number, required: true },
   durationInMinutes: { type: Number, required: true },
+  sessionsPerWeek: {
+    type: Number,
+    required: true,
+    min: [1, "Buổi/tuần phải >= 1"],
+    max: [7, "Buổi/tuần không quá 7"],
+    default: 2,
+  },
+  minStudent: {
+    type: Number,
+    required: true,
+    min: [1, "Sĩ số tối thiểu phải >= 1"],
+    default: 8,
+  },
+  maxStudent: {
+    type: Number,
+    required: true,
+    min: [1, "Sĩ số tối đa phải >= 1"],
+    default: 15,
+  },
+
+  inputMinScore: { type: Number, default: null },
+  inputMaxScore: { type: Number, default: null },
   imageCover: String,
   embedding: {
     type: [Number],

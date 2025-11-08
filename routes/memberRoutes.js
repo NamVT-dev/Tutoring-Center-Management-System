@@ -12,4 +12,9 @@ route.get("/learner", studentCtrl.getAllMyStudent);
 route.get("/learner/:id", studentCtrl.getOneStudent);
 route.patch("/learner/:id", studentCtrl.updateStudent);
 
+route.post("/:id/goals", studentCtrl.updateLearningGoal);
+route.get("/:id/roadmap", studentCtrl.getRoadmap);
+route.post("/custom-schedule", studentCtrl.createCustomSchedule);
+route.post("/enrollment", studentCtrl.createSeatHold);
+
 module.exports = route;

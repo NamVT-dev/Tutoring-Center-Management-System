@@ -16,7 +16,7 @@ const getListTeacher = catchAsync(async (req, res) => {
     searchFields: ["username", "email", "level"],
     page,
     limit,
-    select: "username email active profile.photo level avaiable",
+    select: "username email active profile level avaiable",
     sort: "-createdAt",
   });
 
@@ -42,6 +42,9 @@ const getListTeacher = catchAsync(async (req, res) => {
 const getTeacherDetail = catchAsync(async (req, res, next) => {
   const teacher = await Teacher.findOne({ _id: req.params.id })
     .select("-password -confirmPin -passwordResetToken -student")
+    .populate({
+      path:"skills.category"
+    })
     .lean();
 
   if (!teacher) return next(new AppError("Không tìm được giáo viên!", 404));
