@@ -76,10 +76,9 @@ const listRoom = catchAsync(async (req, res, next) => {
     searchFields: ["name", "status"],
     page: Number(page),
     limit: Number(limit),
-    select:"_id name capacity status",
-    sort:req.query.sort || "name"
+    select: "_id name capacity status",
+    sort: req.query.sort || "name",
   });
-
 
   const [total, rooms] = await Promise.all([
     Room.countDocuments(finalQuery),
@@ -94,9 +93,9 @@ const listRoom = catchAsync(async (req, res, next) => {
     status: "success",
     results: rooms.length,
     total,
-    page : Number(page),
+    page: Number(page),
     totalPages: Math.ceil(total / Number(limit || 10)),
-    data: {rooms}
+    data: { rooms },
   });
 });
 const deleteRoom = catchAsync(async (req, res, next) => {

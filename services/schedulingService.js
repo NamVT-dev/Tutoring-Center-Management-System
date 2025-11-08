@@ -13,7 +13,7 @@ const { LEVEL_INDEX } = require("../utils/levels");
 const {
   computeClassStartEndExact,
   buildScheduleSignature,
-  buildClassCode
+  buildClassCode,
 } = require("../utils/scheduleHelper");
 
 class SchedulerContext {
@@ -384,10 +384,10 @@ async function finalizeSchedule(jobId) {
           anchorDate: anchor,
         });
         const classCode = await buildClassCode(course);
-          // `${String(course.category?.name || "CAT")
-          //   .toUpperCase()
-          //   .replace(/\s+/g, "")}` +
-          // `-${String(course.level || "LVL").replace(/\s+/g, "")}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        // `${String(course.category?.name || "CAT")
+        //   .toUpperCase()
+        //   .replace(/\s+/g, "")}` +
+        // `-${String(course.level || "LVL").replace(/\s+/g, "")}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
         classesToCreate.push({
           name: `${first.courseName} | ${weeklySchedules.length}b/tuần`,
@@ -747,7 +747,6 @@ function findPossiblePlacements(
     if (skilledTeachers.length === 0) {
       return { placements: [], failureReason: "LOCKED_TEACHER_UNAVAILABLE" };
     }
-    
   }
 
   if (skilledTeachers.length === 0) {
@@ -902,7 +901,7 @@ function canTeachCourse(teacher, course) {
     return teacher.skills.some((s) => {
       if (String(s.category) !== catId) return false;
 
-      if (s.anyLevel) return true; 
+      if (s.anyLevel) return true;
 
       const lvls = Array.isArray(s.levels) ? s.levels : [];
       if (lvls.includes(level)) return true;
@@ -923,8 +922,8 @@ function violatesSpacing(existingAssignments, newDay, minGapDays = 1) {
   if (!existingAssignments.length) return false;
   for (const a of existingAssignments) {
     const d = Math.abs(a.day - newDay);
-    const wrap = Math.min(d, 7 - d); 
-    if (wrap < minGapDays + 1) return true; 
+    const wrap = Math.min(d, 7 - d);
+    if (wrap < minGapDays + 1) return true;
   }
   return false;
 }
@@ -953,5 +952,5 @@ async function buildWeeklyOccupancyFromClasses({ excludeJobId } = {}) {
 module.exports = {
   runAutoScheduler,
   finalizeSchedule,
-  canTeachCourse
+  canTeachCourse,
 };

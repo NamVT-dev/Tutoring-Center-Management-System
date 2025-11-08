@@ -159,7 +159,6 @@ const updateConfig = catchAsync(async (req, res, next) => {
       cleanedDayShifts.push({ dayOfWeek: d, shifts: Array.from(shiftsSet) });
     }
 
-    
     const allowedShiftNames = new Set(
       (payload.shifts || currentConfig.shifts || []).map((s) =>
         s.name.toUpperCase()

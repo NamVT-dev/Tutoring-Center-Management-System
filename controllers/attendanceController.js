@@ -1,4 +1,3 @@
-const { default: mongoose } = require("mongoose");
 const Attendance = require("../models/attendanceModel");
 const Session = require("../models/sessionModel");
 const AppError = require("../utils/appError");
