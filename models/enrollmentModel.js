@@ -20,7 +20,7 @@ const enrollmentSchema = new mongoose.Schema({
 const Enrollment = mongoose.model(
   "Enrollment",
   enrollmentSchema,
-  "Enrollments"
+  "enrollments"
 );
 
 module.exports = Enrollment;
