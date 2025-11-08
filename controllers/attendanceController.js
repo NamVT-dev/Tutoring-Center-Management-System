@@ -1,3 +1,4 @@
+const { default: mongoose } = require("mongoose");
 const Attendance = require("../models/attendanceModel");
 const Session = require("../models/sessionModel");
 const AppError = require("../utils/appError");
@@ -64,5 +65,17 @@ exports.takeAttendance = catchAsync(async (req, res, next) => {
   res.status(200).json({
     status: "success",
     data: attendance,
+  });
+});
+
+exports.getAllAttendanceReport = catchAsync(async (req, res) => {
+  const attendances = await Attendance.find().populate({
+    path: "session",
+    match: { teacher: req.user.id },
+  });
+  const filtered = attendances.filter((a) => a.session);
+  res.status(200).json({
+    status: "success",
+    data: filtered,
   });
 });
