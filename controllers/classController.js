@@ -6,6 +6,8 @@ const Class = require("../models/classModel");
 const Session = require("../models/sessionModel");
 const Center = require("../models/centerModel");
 const Course = require("../models/courseModel");
+const factory = require("./handlerFactory");
+
 const {
   previewChangeTeacher,
   applyChangeTeacher,
@@ -158,7 +160,7 @@ exports.getClassDetail = catchAsync(async (req, res, next) => {
     includeSet.add("teacher");
     includeSet.add("room");
     includeSet.add("course");
-    includeSet.add("student")
+    includeSet.add("student");
   }
 
   const populate = [];
@@ -176,9 +178,9 @@ exports.getClassDetail = catchAsync(async (req, res, next) => {
   }
   if (includeSet.has("student")) {
     populate.push({
-        path: "student", 
+      path: "student",
     });
-}
+  }
 
   const classSelect =
     select ||
@@ -245,3 +247,7 @@ exports.applyChangeTeacher = catchAsync(async (req, res) => {
   });
   res.status(200).json({ status: "success", applied: result });
 });
+
+exports.createClass = factory.createOne(Class);
+exports.updateClass = factory.updateOne(Class);
+exports.deleteClass = factory.deleteOne(Class);
