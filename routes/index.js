@@ -7,6 +7,7 @@ const categoryRoutes = require("./categoryRoutes");
 const memberRoutes = require("./memberRoutes");
 const scheduleRoutes = require("./scheduleRoutes");
 const attendanceRoutes = require("./attendenceRoutes");
+const paymentRoutes = require("./paymentRoutes");
 const route = express.Router();
 
 route.use("/auth", authRoutes);
@@ -17,5 +18,6 @@ route.use("/categories", categoryRoutes);
 route.use("/", memberRoutes);
 route.use("/schedule", scheduleRoutes);
 route.use("/attendence", attendanceRoutes);
+route.use("/payment",paymentRoutes);
 
 module.exports = route;
