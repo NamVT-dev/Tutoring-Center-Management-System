@@ -120,7 +120,11 @@ const accountFilterForStaff = (req, res, next) => {
   req.query.role = ["member", "teacher"];
   next();
 };
-const getAllUserAccount = factory.getAll(User);
+const getAllUserAccount = factory.getAll(User, [
+  "profile.fullname",
+  "email",
+  "profile.phoneNumber",
+]);
 const getOneUserAccount = catchAsync(async (req, res, next) => {
   const account = await User.findById(req.params.id);
   if (!account || !["member", "teacher"].includes(account.role)) {

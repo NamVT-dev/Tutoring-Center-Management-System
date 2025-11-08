@@ -5,8 +5,9 @@ const mongoose = require("mongoose");
 const Enrollment = require("../models/enrollmentModel");
 const Class = require("../models/classModel");
 const Student = require("../models/studentModel");
+const factory = require("./handlerFactory");
 
-exports.getAllPayments = catchAsync(async (req, res) => {
+exports.getMyPayments = catchAsync(async (req, res) => {
   const payments = await Payment.find({
     userId: req.user.id,
   });
@@ -17,7 +18,7 @@ exports.getAllPayments = catchAsync(async (req, res) => {
   });
 });
 
-exports.getOne = catchAsync(async (req, res, next) => {
+exports.getOneByMember = catchAsync(async (req, res, next) => {
   const payment = await Payment.findById(req.params.id);
   if (!payment || !payment.userId === req.user.id)
     return next(new AppError("Không tìm thấy thanh toán", 404));
@@ -139,3 +140,9 @@ exports.handlePaymentWebhook = catchAsync(async (req, res, next) => {
   }
 });
 
+exports.getAllPayment = factory.getAll(Payment, [
+  "user.profile.fullname",
+  "user.email",
+]);
+
+exports.getOne = factory.getOne(Payment);
