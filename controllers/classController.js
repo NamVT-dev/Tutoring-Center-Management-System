@@ -1,5 +1,6 @@
 const catchAsync = require("../utils/catchAsync");
 const AppError = require("../utils/appError");
+const mongoose = require("mongoose");
 const { buildPaginatedQuery } = require("../utils/queryHelper");
 const Class = require("../models/classModel");
 const Session = require("../models/sessionModel");
@@ -153,6 +154,7 @@ exports.getClassDetail = catchAsync(async (req, res, next) => {
     includeSet.add("teacher");
     includeSet.add("room");
     includeSet.add("course");
+    includeSet.add("student")
   }
 
   const populate = [];
@@ -168,10 +170,15 @@ exports.getClassDetail = catchAsync(async (req, res, next) => {
   if (includeSet.has("room")) {
     populate.push({ path: "weeklySchedules.room", select: "name capacity" });
   }
+  if (includeSet.has("student")) {
+    populate.push({
+        path: "student", 
+    });
+}
 
   const classSelect =
     select ||
-    "name classCode status course startAt endAt minStudent maxStudent preferredTeacher weeklySchedules createdAt";
+    "name classCode status course startAt endAt minStudent maxStudent preferredTeacher weeklySchedules createdAt student";
 
   const cls = await Class.findById(id)
     .select(classSelect)
