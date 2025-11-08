@@ -11,6 +11,10 @@ const {
   applyChangeTeacher,
 } = require("../services/classChangeService");
 
+function findShiftByName(centerConfig, shiftName) {
+  return (centerConfig?.shifts || []).find((s) => s.name === shiftName) || null;
+}
+
 exports.listClasses = catchAsync(async (req, res, next) => {
   const {
     page = 1,
