@@ -10,7 +10,7 @@ const createCsvWriter = require("csv-writer").createObjectCsvWriter;
 const csvFilePath = path.join(__dirname, "..", "public", "results.csv");
 
 exports.registerTest = catchAsync(async (req, res, next) => {
-  const { name, dob, categoryId } = req.body;
+  const { name, dob, gender, categoryId } = req.body;
   if (!name || !dob) {
     return next(new AppError("Thiếu thông tin cần thiết", 400));
   }
@@ -19,11 +19,14 @@ exports.registerTest = catchAsync(async (req, res, next) => {
   if (!category) return next(new AppError("Không tìm thấy category", 400));
 
   const student = await Student.create({
+    user: req.user.id,
     name,
     dob,
+    gender,
     category: categoryId,
     tested: false,
   });
+
   const user = await Member.findById(req.user.id);
   user.student.push(student.id);
 

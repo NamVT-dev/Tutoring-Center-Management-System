@@ -29,6 +29,12 @@ const studentSchema = new mongoose.Schema(
       reqired: true,
     },
     dob: Date,
+    gender: {
+      type: String,
+      enum: ["male", "female"],
+      default: "male",
+    },
+    photo: String,
     class: {
       type: [mongoose.Schema.ObjectId],
       ref: "Class",
@@ -78,8 +84,7 @@ studentSchema.pre("save", function (next) {
   }
 });
 studentSchema.pre(/^find/, function (next) {
-  this.populate("category")
-    .populate("learningGoal.category");
+  this.populate("category").populate("learningGoal.category");
   next();
 });
 

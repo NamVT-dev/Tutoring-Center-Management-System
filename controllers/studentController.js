@@ -8,7 +8,7 @@ const mongoose = require("mongoose");
 const Enrollment = require("../models/enrollmentModel");
 const CustomScheduleRequest = require("../models/customScheduleRequestModel");
 const { mapScoreToLevel, getRoadmapLevels } = require("../utils/levels");
-const {LEVEL_INDEX} = require("../utils/levels");
+const { LEVEL_INDEX } = require("../utils/levels");
 
 exports.getAllMyStudent = catchAsync(async (req, res) => {
   const user = await req.user.populate("student");
@@ -47,7 +47,8 @@ exports.updateStudent = catchAsync(async (req, res, next) => {
     return newObj;
   };
 
-  const filteredBody = filterObj(req.body, "name", "dob");
+  const filteredBody = filterObj(req.body, "name", "dob", "gender");
+  if (req.file) filteredBody.photo = req.file.filename;
   const updatedStudent = await Student.findByIdAndUpdate(
     studentId,
     filteredBody,
@@ -112,7 +113,7 @@ const getCenterConfig = async () => {
   return centerConfig;
 };
 exports.getRoadmap = catchAsync(async (req, res, next) => {
-  const { id } = req.params; 
+  const { id } = req.params;
   const { category: categoryId } = req.query;
 
   if (!categoryId) {
@@ -126,10 +127,8 @@ exports.getRoadmap = catchAsync(async (req, res, next) => {
   if (!student) {
     return next(new AppError("Không tìm thấy học viên", 404));
   }
-  if (!student.learningGoal ) {
-    return next(
-      new AppError("Học viên chưa đặt mục tiêu", 400)
-    );
+  if (!student.learningGoal) {
+    return next(new AppError("Học viên chưa đặt mục tiêu", 400));
   }
 
   const studentCategory = student.category.find(
@@ -143,8 +142,8 @@ exports.getRoadmap = catchAsync(async (req, res, next) => {
       new AppError("Học viên chưa có kết quả test cho category này", 400)
     );
   }
-  
-  const categoryName = studentCategory.name; 
+
+  const categoryName = studentCategory.name;
 
   const goal =
     student.learningGoal.category?._id.toString() === categoryId
@@ -152,9 +151,7 @@ exports.getRoadmap = catchAsync(async (req, res, next) => {
       : null;
 
   if (!goal) {
-    return next(
-      new AppError("Chưa đặt mục tiêu cho category này", 400)
-    );
+    return next(new AppError("Chưa đặt mục tiêu cho category này", 400));
   }
 
   const currentLevel = mapScoreToLevel(scoreOrLevelString, categoryName);
@@ -172,41 +169,40 @@ exports.getRoadmap = catchAsync(async (req, res, next) => {
     });
   }
 
-const stages = await Course.find({
+  const stages = await Course.find({
     category: categoryId,
     level: { $in: requiredLevels },
-  })
-    .lean();
-    
+  }).lean();
+
   stages.sort((a, b) => LEVEL_INDEX[a.level] - LEVEL_INDEX[b.level]);
 
   const stageIds = stages.map((s) => s._id);
 
   const constraints = goal.constraints;
   const center = await getCenterConfig();
-  
+
   const allowedStartMinutes = center.shifts
-      .filter((shift) => constraints.shifts.includes(shift.name))
-      .map((shift) => shift.startMinute);
+    .filter((shift) => constraints.shifts.includes(shift.name))
+    .map((shift) => shift.startMinute);
   const allowedDays = constraints.days;
 
   const query = {
-      course: { $in: stageIds },
-      status: "approved",
-      startAt: { $gt: new Date() },
+    course: { $in: stageIds },
+    status: "approved",
+    startAt: { $gt: new Date() },
   };
 
   if (allowedDays.length > 0 && allowedStartMinutes.length > 0) {
-     query["weeklySchedules"] = {
-      "$not": {
-        "$elemMatch": {
-          "$or": [
-            { "dayOfWeek": { "$nin": allowedDays } }, 
-            { "startMinute": { "$nin": allowedStartMinutes } } 
-          ]
-        }
-      }
-    }
+    query["weeklySchedules"] = {
+      $not: {
+        $elemMatch: {
+          $or: [
+            { dayOfWeek: { $nin: allowedDays } },
+            { startMinute: { $nin: allowedStartMinutes } },
+          ],
+        },
+      },
+    };
   }
 
   let upcomingClasses = await Class.find(query)
@@ -243,10 +239,15 @@ exports.createCustomSchedule = catchAsync(async (req, res, next) => {
   if (!studentId || !category) {
     return next(new AppError("Vui lòng cung cấp studentId và categoryId", 400));
   }
-  const studentProfile = await Student.findOne({ _id: studentId, user: userId });
+  const studentProfile = await Student.findOne({
+    _id: studentId,
+    user: userId,
+  });
 
   if (!studentProfile) {
-    return next(new AppError("Không tìm thấy học viên này trong tài khoản của bạn", 404));
+    return next(
+      new AppError("Không tìm thấy học viên này trong tài khoản của bạn", 404)
+    );
   }
 
   const newRequest = await CustomScheduleRequest.create({
@@ -268,7 +269,6 @@ exports.createCustomSchedule = catchAsync(async (req, res, next) => {
 });
 
 const HOLD_TTL_MINUTES = 15;
-
 
 exports.createSeatHold = catchAsync(async (req, res, next) => {
   const { student, classId } = req.body;

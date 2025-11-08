@@ -10,7 +10,12 @@ route.get("/courses/:id", courseCtrl.getCourse);
 route.use(authCtrl.protect, authCtrl.restrictTo("member"));
 route.get("/learner", studentCtrl.getAllMyStudent);
 route.get("/learner/:id", studentCtrl.getOneStudent);
-route.patch("/learner/:id", studentCtrl.updateStudent);
+route.patch(
+  "/learner/:id",
+  authCtrl.uploadStudentPhoto,
+  authCtrl.resizeUserPhoto,
+  studentCtrl.updateStudent
+);
 
 route.post("/:id/goals", studentCtrl.updateLearningGoal);
 route.get("/:id/roadmap", studentCtrl.getRoadmap);
