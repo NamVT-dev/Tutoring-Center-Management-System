@@ -26,7 +26,7 @@ exports.getTodaySession = catchAsync(async (req, res) => {
 
 exports.startSession = catchAsync(async (req, res, next) => {
   const session = await Session.findById(req.params.id).populate("class");
-  if (!session || !session.teacher === req.user.id)
+  if (!session || session.teacher.toString() !== req.user.id)
     return next(new AppError("Không tìm thấy session", 404));
   let attendance = await Attendance.findOne({ session: session.id });
   if (!attendance) {
@@ -50,14 +50,12 @@ exports.takeAttendance = catchAsync(async (req, res, next) => {
     "session"
   );
 
-  if (!attandanceSession)
+  if (
+    !attandanceSession ||
+    attandanceSession.session.teacher.toString() !== req.user.id
+  )
     return next(new AppError("Không tìm thấy session", 404));
 
-  if (!attandanceSession.session.teacher === req.user.id) {
-    return next(
-      new AppError("Bạn không có quyền thực hiện hành động này", 403)
-    );
-  }
   const { attendance } = req.body;
   attandanceSession.attendance = attendance;
   attandanceSession.save();
