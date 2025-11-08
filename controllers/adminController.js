@@ -43,7 +43,7 @@ const getTeacherDetail = catchAsync(async (req, res, next) => {
   const teacher = await Teacher.findOne({ _id: req.params.id })
     .select("-password -confirmPin -passwordResetToken -student")
     .populate({
-      path:"skills.category"
+      path: "skills.category",
     })
     .lean();
 
@@ -116,10 +116,29 @@ const updateTeacher = catchAsync(async (req, res, next) => {
 });
 const deleteTeacher = factory.deleteOne(Teacher);
 
+const accountFilterForStaff = (req, res, next) => {
+  req.query.role = ["member", "teacher"];
+  next();
+};
+const getAllUserAccount = factory.getAll(User);
+const getOneUserAccount = catchAsync(async (req, res, next) => {
+  const account = await User.findById(req.params.id);
+  if (!account || !["member", "teacher"].includes(account.role)) {
+    return next(new AppError("Không tìm thấy người dùng", 404));
+  }
+  res.status(200).json({
+    status: "success",
+    data: account,
+  });
+});
+
 module.exports = {
   getListTeacher,
   getTeacherDetail,
   createTeacher,
   updateTeacher,
   deleteTeacher,
+  accountFilterForStaff,
+  getAllUserAccount,
+  getOneUserAccount,
 };
