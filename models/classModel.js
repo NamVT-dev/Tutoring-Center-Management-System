@@ -37,6 +37,10 @@ const classSchema = new mongoose.Schema({
     unique: true,
     index: true,
   },
+  students: {
+    type: [mongoose.Schema.ObjectId],
+    ref: "Student",
+  },
   course: {
     type: mongoose.Schema.ObjectId,
     ref: "Course",
@@ -59,11 +63,13 @@ const classSchema = new mongoose.Schema({
   // Ưu tiên GV chính (nếu có)
   preferredTeacher: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "User" },
+    ref: "User",
+  },
   scheduleSignature: {
     type: String,
     unique: true,
-    sparse: true },
+    sparse: true,
+  },
   createdByJob: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "ScheduleJob",
