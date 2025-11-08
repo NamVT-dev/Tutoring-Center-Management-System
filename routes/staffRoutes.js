@@ -7,7 +7,7 @@ const testController = require("../controllers/testController");
 
 const route = express.Router();
 
-// route.use(authController.protect, authController.restrictTo("admin", "staff"));
+route.use(authController.protect, authController.restrictTo("admin", "staff"));
 
 //account
 route.get(
