@@ -1,39 +1,85 @@
 const mongoose = require("mongoose");
 
-const studentSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    reqired: true,
+const learningGoalSchema = new mongoose.Schema(
+  {
+    category: {
+      type: mongoose.Schema.ObjectId,
+      ref: "Category",
+      required: true,
+    },
+    targetScore: { type: String, required: true },
+    deadline: { type: Date, required: true },
+    constraints: {
+      days: { type: [Number], default: [] },
+      shifts: { type: [String], default: [] },
+    },
   },
-  dob: Date,
-  class: {
-    type: [mongoose.Schema.ObjectId],
-    ref: "Class",
+  { _id: false }
+);
+const studentSchema = new mongoose.Schema(
+  {
+    user: {
+      type: mongoose.Schema.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+    name: {
+      type: String,
+      reqired: true,
+    },
+    dob: Date,
+    class: {
+      type: [mongoose.Schema.ObjectId],
+      ref: "Class",
+    },
+    level: String,
+    category: {
+      type: [mongoose.Schema.ObjectId],
+      ref: "Category",
+    },
+    tested: {
+      type: Boolean,
+      default: false,
+    },
+    testScore: {
+      type: Number,
+      default: 0,
+    },
+    registeredAt: {
+      type: Date,
+      default: Date.now(),
+    },
+    testResultAt: {
+      type: Date,
+    },
+    enrolled: {
+      type: Boolean,
+      default: false,
+    },
+    learningGoal: learningGoalSchema,
   },
-  level: String,
-  category: {
-    type: [mongoose.Schema.ObjectId],
-    ref: "Category",
-  },
-  tested: {
-    type: Boolean,
-    default: false,
-  },
-  testScore: {
-    type: Number,
-    default: 0,
-  },
-  registeredAt: {
-    type: Date,
-    default: Date.now(),
-  },
-  testResultAt: {
-    type: Date,
-  },
-});
+  { timestamps: true }
+);
+studentSchema.pre("save", function (next) {
+  // Chỉ chạy nếu trường mới có thay đổi
+  if (!this.isModified("learningGoal")) {
+    return next();
+  }
 
+  try {
+    // 1. Đồng bộ từ Learning Goal
+    if (this.isModified("learningGoal") && this.learningGoal?.category) {
+      this.category = [this.learningGoal.category];
+    }
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
 studentSchema.pre(/^find/, function (next) {
-  this.populate("category");
+  this.populate("category")
+    .populate("learningGoal.category");
   next();
 });
 

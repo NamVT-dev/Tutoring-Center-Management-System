@@ -53,17 +53,28 @@ const classSchema = new mongoose.Schema({
     type: Date,
     index: true,
   },
+  student: {
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: "Student",
+  },
+  reservedCount: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
   minStudent: Number,
   maxStudent: Number,
   learningMaterial: String,
   // Ưu tiên GV chính (nếu có)
   preferredTeacher: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "User" },
+    ref: "User",
+  },
   scheduleSignature: {
     type: String,
     unique: true,
-    sparse: true },
+    sparse: true,
+  },
   createdByJob: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "ScheduleJob",
@@ -75,6 +86,11 @@ const classSchema = new mongoose.Schema({
     default: "approved",
     index: true,
   },
+});
+classSchema.virtual("currentSize").get(function () {
+  const confirmed = this.student ? this.student.length : 0;
+  const reserved = this.reservedCount || 0;
+  return confirmed + reserved;
 });
 const Class = mongoose.model("Class", classSchema, "classes");
 
