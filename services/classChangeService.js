@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const Class = require("../models/classModel");
 const Session = require("../models/sessionModel");
 const Course = require("../models/courseModel");
-const {Teacher} = require("../models/userModel");
+const { Teacher } = require("../models/userModel");
 const { canTeachCourse } = require("../services/schedulingService");
 const AppError = require("../utils/appError");
 

@@ -1,4 +1,6 @@
 const Student = require("../models/studentModel");
+const catchAsync = require("../utils/catchAsync");
+const AppError = require("../utils/appError");
 const Course = require("../models/courseModel");
 const Class = require("../models/classModel");
 const Center = require("../models/centerModel");
@@ -6,14 +8,63 @@ const mongoose = require("mongoose");
 const Enrollment = require("../models/enrollmentModel");
 const CustomScheduleRequest = require("../models/customScheduleRequestModel");
 const { mapScoreToLevel, getRoadmapLevels } = require("../utils/levels");
-const catchAsync = require("../utils/catchAsync");
-const AppError = require("../utils/appError");
 const {LEVEL_INDEX} = require("../utils/levels");
 
-/**
- * BƯỚC 2: API: POST /students/:id/goals
- * Cập nhật mục tiêu học tập cho một học viên (studentId)
- */
+exports.getAllMyStudent = catchAsync(async (req, res) => {
+  const user = await req.user.populate("student");
+  res.status(200).json({
+    status: "success",
+    data: user.student,
+  });
+});
+
+exports.getOneStudent = catchAsync(async (req, res, next) => {
+  const studentId = req.params.id;
+  if (!req.user.student.includes(studentId))
+    return next(new AppError("Không tìm thấy học viên", 404));
+
+  const student = await Student.findById(studentId);
+  if (!student) return next(new AppError("Không tìm thấy học viên", 404));
+  res.status(200).json({
+    status: "success",
+    data: student,
+  });
+});
+
+exports.updateStudent = catchAsync(async (req, res, next) => {
+  const studentId = req.params.id;
+  if (!req.user.student.includes(studentId))
+    return next(new AppError("Không tìm thấy học viên", 404));
+
+  const student = await Student.findById(studentId);
+  if (!student) return next(new AppError("Không tìm thấy học viên", 404));
+
+  const filterObj = (obj, ...allowedFields) => {
+    const newObj = {};
+    Object.keys(obj).forEach((el) => {
+      if (allowedFields.includes(el)) newObj[el] = obj[el];
+    });
+    return newObj;
+  };
+
+  const filteredBody = filterObj(req.body, "name", "dob");
+  const updatedStudent = await Student.findByIdAndUpdate(
+    studentId,
+    filteredBody,
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
+
+  res.status(200).json({
+    status: "success",
+    data: {
+      student: updatedStudent,
+    },
+  });
+});
+
 exports.updateLearningGoal = catchAsync(async (req, res, next) => {
   const { id } = req.params;
   const { category, targetScore, deadline, constraints } = req.body;
@@ -54,20 +105,14 @@ exports.updateLearningGoal = catchAsync(async (req, res, next) => {
   });
 });
 
-// Cache config của Center
 let centerConfig = null;
 const getCenterConfig = async () => {
   if (centerConfig) return centerConfig;
   centerConfig = await Center.findOne({ key: "default" }).lean();
   return centerConfig;
 };
-
-/**
- * BƯỚC 3: API: GET /students/:id/roadmap?category=...
- * Gợi ý lộ trình và các lớp học phù hợp
- */
 exports.getRoadmap = catchAsync(async (req, res, next) => {
-  const { id } = req.params; // Student ID
+  const { id } = req.params; 
   const { category: categoryId } = req.query;
 
   if (!categoryId) {
@@ -87,7 +132,6 @@ exports.getRoadmap = catchAsync(async (req, res, next) => {
     );
   }
 
-  // 1. Tìm category name từ mảng category của student
   const studentCategory = student.category.find(
     (c) => c._id.toString() === categoryId
   );
@@ -102,7 +146,6 @@ exports.getRoadmap = catchAsync(async (req, res, next) => {
   
   const categoryName = studentCategory.name; 
 
-  // 3. Lấy Goal
   const goal =
     student.learningGoal.category?._id.toString() === categoryId
       ? student.learningGoal
@@ -114,11 +157,9 @@ exports.getRoadmap = catchAsync(async (req, res, next) => {
     );
   }
 
-  // 2. ÁNH XẠ LEVEL
   const currentLevel = mapScoreToLevel(scoreOrLevelString, categoryName);
   const targetLevel = goal.targetScore;
 
-  // 3. SUY LUẬN LỘ TRÌNH
   const requiredLevels = getRoadmapLevels(currentLevel, targetLevel);
   if (requiredLevels.length === 0) {
     return res.status(200).json({
@@ -131,7 +172,6 @@ exports.getRoadmap = catchAsync(async (req, res, next) => {
     });
   }
 
-  // 4. TÌM CHẶNG (COURSES)
 const stages = await Course.find({
     category: categoryId,
     level: { $in: requiredLevels },
@@ -142,7 +182,6 @@ const stages = await Course.find({
 
   const stageIds = stages.map((s) => s._id);
 
-  // 7. TÌM LỚP (CLASSES) (Giữ nguyên)
   const constraints = goal.constraints;
   const center = await getCenterConfig();
   
@@ -190,10 +229,6 @@ const stages = await Course.find({
   });
 });
 
-/**
- * BƯỚC 4: API: POST /custom-schedules
- * Thu thập yêu cầu lịch cá nhân
- */
 exports.createCustomSchedule = catchAsync(async (req, res, next) => {
   const {
     student: studentId,
@@ -234,10 +269,7 @@ exports.createCustomSchedule = catchAsync(async (req, res, next) => {
 
 const HOLD_TTL_MINUTES = 15;
 
-/**
- * BƯỚC 5: API: POST /enrollments (Seat Hold)
- * Giữ ghế tạm thời
- */
+
 exports.createSeatHold = catchAsync(async (req, res, next) => {
   const { student, classId } = req.body;
 

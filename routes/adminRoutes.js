@@ -16,7 +16,7 @@ route.use(authCtrl.restrictTo("admin"));
 route.get("/teachers", adminController.getListTeacher);
 route.post("/teachers", adminController.createTeacher);
 route.get("/teachers/:id", adminController.getTeacherDetail);
-route.post(
+route.patch(
   "/teachers/:id",
   authCtrl.uploadUserPhoto,
   authCtrl.resizeUserPhoto,

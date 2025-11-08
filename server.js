@@ -41,17 +41,17 @@ const io = new Server(server, {
   cors: {
     origin: clientURL,
     method: ["GET", "POST"],
-    credentials: true
-  }
+    credentials: true,
+  },
 });
 
-app.set('socketio', io);
+app.set("socketio", io);
 
-io.on('connection', (socket) => {
+io.on("connection", (socket) => {
   console.log("người dùng đã kết nối:", socket.id);
-  
-  socket.on('disconnect', () => {
-    console.log('Người dùng ngắt kết nối:', socket.id)
+
+  socket.on("disconnect", () => {
+    console.log("Người dùng ngắt kết nối:", socket.id);
   });
 });
 const port = process.env.PORT || 9999;

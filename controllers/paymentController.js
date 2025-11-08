@@ -1,14 +1,32 @@
+const Payment = require("../models/paymentModel");
+const catchAsync = require("../utils/catchAsync");
+const AppError = require("../utils/appError");
 const mongoose = require("mongoose");
 const Enrollment = require("../models/enrollmentModel");
 const Class = require("../models/classModel");
 const Student = require("../models/studentModel");
-const catchAsync = require("../utils/catchAsync");
-const AppError = require("../utils/appError");
 
-/**
- * API: POST /payments/webhook
- * Xác nhận thanh toán từ PSP
- */
+exports.getAllPayments = catchAsync(async (req, res) => {
+  const payments = await Payment.find({
+    userId: req.user.id,
+  });
+
+  res.status(200).json({
+    status: "success",
+    data: payments,
+  });
+});
+
+exports.getOne = catchAsync(async (req, res, next) => {
+  const payment = await Payment.findById(req.params.id);
+  if (!payment || !payment.userId === req.user.id)
+    return next(new AppError("Không tìm thấy thanh toán", 404));
+  res.status(200).json({
+    status: "success",
+    data: payment,
+  });
+});
+
 exports.handlePaymentWebhook = catchAsync(async (req, res, next) => {
   // thêm logic xác thực Webhook ở đây
 
@@ -120,3 +138,4 @@ exports.handlePaymentWebhook = catchAsync(async (req, res, next) => {
     session.endSession();
   }
 });
+

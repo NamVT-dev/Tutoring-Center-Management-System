@@ -1,8 +1,13 @@
 const express = require("express");
-const paymentCtrl = require("../controllers/paymentController");
+const authController = require("../controllers/authController");
+const paymentController = require("../controllers/paymentController");
 
 const route = express.Router();
 
-route.post("/webhook", paymentCtrl.handlePaymentWebhook);
+route.use(authController.protect);
+route.get("/", paymentController.getAllPayments);
+route.get("/:id", paymentController.getOne);
+route.post("/webhook", paymentController.handlePaymentWebhook);
 
 module.exports = route;
+

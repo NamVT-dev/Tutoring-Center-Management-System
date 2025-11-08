@@ -112,7 +112,9 @@ function computeClassStartEndExact({
   };
 }
 function buildClassCode(course) {
-  const cat = String(course?.category?.name || "CAT").toUpperCase().replace(/\s+/g, "");
+  const cat = String(course?.category?.name || "CAT")
+    .toUpperCase()
+    .replace(/\s+/g, "");
   const lvl = String(course?.level || "LVL").replace(/\s+/g, "");
   const now = moment().format("YYYYMMDD-HHmm");
   const rnd = String(Math.floor(Math.random() * 1000)).padStart(3, "0");
@@ -121,5 +123,5 @@ function buildClassCode(course) {
 module.exports = {
   buildScheduleSignature,
   computeClassStartEndExact,
-  buildClassCode
+  buildClassCode,
 };

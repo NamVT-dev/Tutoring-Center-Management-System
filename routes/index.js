@@ -6,7 +6,8 @@ const testRoutes = require("./testRoutes");
 const categoryRoutes = require("./categoryRoutes");
 const memberRoutes = require("./memberRoutes");
 const scheduleRoutes = require("./scheduleRoutes");
-const attendanceRoutes = require("./attendenceRoutes");
+const attendanceRoutes = require("./attendanceRoutes");
+const notificationRoutes = require("./notificationRoutes");
 const paymentRoutes = require("./paymentRoutes");
 const route = express.Router();
 
@@ -15,9 +16,10 @@ route.use("/admin", adminRoutes);
 route.use("/teacher", teacherRoutes);
 route.use("/test", testRoutes);
 route.use("/categories", categoryRoutes);
-route.use("/", memberRoutes);
 route.use("/schedule", scheduleRoutes);
-route.use("/attendence", attendanceRoutes);
-route.use("/payment",paymentRoutes);
+route.use("/attendance", attendanceRoutes);
+route.use("/notification", notificationRoutes);
+route.use("/payment", paymentRoutes);
+route.use("/", memberRoutes);
 
 module.exports = route;

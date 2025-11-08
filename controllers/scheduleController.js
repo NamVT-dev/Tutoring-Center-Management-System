@@ -15,7 +15,12 @@ exports.runScheduler = catchAsync(async (req, res, next) => {
     );
   }
 
-  const { intakeStartDate, intakeEndDate, threshold = 0.7, classStartAnchor } = req.body;
+  const {
+    intakeStartDate,
+    intakeEndDate,
+    threshold = 0.7,
+    classStartAnchor,
+  } = req.body;
   if (!intakeStartDate || !intakeEndDate) {
     return next(
       new AppError("Vui lòng cung cấp intakeStartDate và intakeEndDate.", 400)
@@ -41,7 +46,7 @@ exports.runScheduler = catchAsync(async (req, res, next) => {
   schedulingService
     .runAutoScheduler(
       newJob._id, // Truyền ID của Job
-      req.app.get('socketio') // Truyền server Socket.IO
+      req.app.get("socketio") // Truyền server Socket.IO
     )
     .catch((err) => {
       // Xử lý lỗi nghiêm trọng nếu `runAutoScheduler` bị sập
@@ -86,7 +91,7 @@ exports.finalizeSchedule = catchAsync(async (req, res, next) => {
 
     // Mở khóa hệ thống
     await Center.findOneAndUpdate({ key: "default" }, { isScheduling: false });
-    req.app.get('socketio').emit("schedule_unlocked");
+    req.app.get("socketio").emit("schedule_unlocked");
 
     res.status(201).json({
       status: "success",
@@ -103,7 +108,7 @@ exports.finalizeSchedule = catchAsync(async (req, res, next) => {
     await job.save();
 
     await Center.findOneAndUpdate({ key: "default" }, { isScheduling: false });
-    req.app.get('socketio').emit("schedule_unlocked");
+    req.app.get("socketio").emit("schedule_unlocked");
     next(error);
   }
 });
