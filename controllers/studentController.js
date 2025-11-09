@@ -211,7 +211,7 @@ exports.getRoadmap = catchAsync(async (req, res, next) => {
     .lean();
 
   const availableClasses = upcomingClasses.filter((cls) => {
-    const confirmed = cls.confirmedStudents ? cls.confirmedStudents.length : 0;
+    const confirmed = cls.student ? cls.student.length : 0;
     const reserved = cls.reservedCount || 0;
     return confirmed + reserved < cls.maxStudent;
   });
@@ -300,7 +300,8 @@ exports.createSeatHold = catchAsync(async (req, res, next) => {
       throw new AppError("Lớp đã đầy, vui lòng chọn lớp khác", 400);
     }
 
-    // 3. Check xem student đã hold/confirmed lớp này chưa
+    // 3. Check xem student đã hold/
+    // ed lớp này chưa
     const existingEnrollment = await Enrollment.findOne({
       student: student,
       class: classId,
