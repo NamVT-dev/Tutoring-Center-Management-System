@@ -33,7 +33,10 @@ const app = require("./app");
 const cronJob = require("./utils/cronTask");
 
 const DB = process.env.DATABASE;
-mongoose.connect(DB).then(() => console.log("DB connection successful!"));
+mongoose.connect(DB).then(() => {
+  console.log("DB connection successful!")
+  cronJob();
+});
 
 const server = http.createServer(app);
 const clientURL = process.env.FRONT_END_URI;
@@ -59,7 +62,7 @@ server.listen(port, () => {
   console.log(`App running on port ${port}...`);
 });
 
-cronJob();
+// cronJob();
 
 process.on("unhandledRejection", (err) => {
   console.log("UNHANDLED REJECTION! 💥 Shutting down...");
