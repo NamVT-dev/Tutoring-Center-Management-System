@@ -8,6 +8,7 @@ const Session = require("../models/sessionModel");
 const Student = require("../models/studentModel");
 const Category = require("../models/categoryModel");
 const ScheduleJob = require("../models/scheduleJobModel");
+const { Teacher } = require("../models/userModel");
 const mongoose = require("mongoose");
 const { LEVEL_INDEX } = require("../utils/levels");
 const {
@@ -384,10 +385,6 @@ async function finalizeSchedule(jobId) {
           anchorDate: anchor,
         });
         const classCode = await buildClassCode(course);
-        // `${String(course.category?.name || "CAT")
-        //   .toUpperCase()
-        //   .replace(/\s+/g, "")}` +
-        // `-${String(course.level || "LVL").replace(/\s+/g, "")}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
         classesToCreate.push({
           name: `${first.courseName} | ${weeklySchedules.length}b/tuần`,
@@ -408,6 +405,43 @@ async function finalizeSchedule(jobId) {
       const createdClasses = classesToCreate.length
         ? await Class.insertMany(classesToCreate, { session: mongoSession })
         : [];
+
+      const teacherClassMap = new Map();
+      for (const newClass of createdClasses) {
+        const classId = newClass._id;
+        const teacherIdsInClass = new Set(); 
+
+        if (newClass.preferredTeacher) {
+          teacherIdsInClass.add(newClass.preferredTeacher.toString());
+        }
+
+        newClass.weeklySchedules.forEach((slot) => {
+          if (slot.teacher) {
+            teacherIdsInClass.add(slot.teacher.toString());
+          }
+        });
+
+        for (const teacherId of teacherIdsInClass) {
+          if (!teacherClassMap.has(teacherId)) {
+            teacherClassMap.set(teacherId, []);
+          }
+          teacherClassMap.get(teacherId).push(classId);
+        }
+      } 
+
+      const teacherUpdateOps = [];
+      for (const [teacherId, classIds] of teacherClassMap.entries()) {
+        teacherUpdateOps.push({
+          updateOne: {
+            filter: { _id: new mongoose.Types.ObjectId(teacherId) },
+            update: { $addToSet: { class: { $each: classIds } } },
+          },
+        });
+      } 
+
+      if (teacherUpdateOps.length > 0) {
+        await Teacher.bulkWrite(teacherUpdateOps, { session: mongoSession });
+      } 
 
       // Tạo sessions theo tuần kế tiếp
       const today = moment.tz(timezone).startOf("day");
