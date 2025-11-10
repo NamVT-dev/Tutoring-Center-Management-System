@@ -34,15 +34,15 @@ const sendSMS = async (phone, message) => {
 
 exports.notifyHoldCreated = async (studentId, enrollment) => {
   const contact = await getContactInfo(studentId);
-  const classInfo = await enrollment.populate("class");
+  const classInfo = await enrollment.populate("class", "name startAt weeklySchedules");
   if (!contact) return;
 
   const data = {
-    className: classInfo.class.name,
-    holdExpiresAt: enrollment.holdExpiresAt.toLocaleString("vi-VN"),
+    classInfo: classInfo.class,
+    enrollment: classInfo,
     studentName: contact.studentName,
   };
-  const subject = `Giữ chỗ thành công cho học viên ${contact.studentName} - Lớp ${data.className}.Thời hạn: ${data.holdExpiresAt}. Vui lòng thanh toán.`;
+  const subject = `Giữ chỗ thành công cho học viên ${contact.studentName} - Lớp ${data.enrollment.class.name}.Thời hạn: ${data.enrollment.holdExpiresAt}. Vui lòng thanh toán.`;
   
 
   new Email(contact.user, data)
@@ -53,14 +53,15 @@ exports.notifyHoldCreated = async (studentId, enrollment) => {
 
 exports.notifyPaymentConfirmed = async (studentId, enrollment) => {
   const contact = await getContactInfo(studentId);
-  const classInfo = await enrollment.populate("class");
+  const classInfo = await enrollment.populate("class","name startAt weeklySchedules");
   if (!contact) return;
 
   const data = {
-    className: classInfo.class.name,
+    classInfo: classInfo.class,
     studentName: contact.studentName,
+    enrollment: classInfo
   };
-  const subject = `Xác nhận đăng ký thành công cho học viên ${contact.studentName} - Lớp ${data.className}`;
+  const subject = `Xác nhận đăng ký thành công cho học viên ${contact.studentName} - Lớp ${data.enrollment.class.name}`;
 
   new Email(contact.user, data)
   .send("paymentConfirmed", subject)

@@ -6,6 +6,7 @@ const Enrollment = require("../models/enrollmentModel");
 const Class = require("../models/classModel");
 const Student = require("../models/studentModel");
 const factory = require("./handlerFactory");
+const { notifyPaymentConfirmed } = require("../utils/notification");
 
 exports.getMyPayments = catchAsync(async (req, res) => {
   const payments = await Payment.find({
@@ -29,8 +30,6 @@ exports.getOneByMember = catchAsync(async (req, res, next) => {
 });
 
 exports.handlePaymentWebhook = catchAsync(async (req, res, next) => {
-  // thêm logic xác thực Webhook ở đây
-
   const event = req.body;
 
   if (event.event !== "payment.succeeded") {
@@ -45,7 +44,6 @@ exports.handlePaymentWebhook = catchAsync(async (req, res, next) => {
   try {
     const enrollment = await Enrollment.findById(enrollmentId).session(session);
     if (!enrollment) {
-      // Lỗi này PSP sẽ retry
       throw new AppError(
         `Webhook Error: Không tìm thấy Enrollment ID: ${enrollmentId}`,
         404
@@ -83,11 +81,24 @@ exports.handlePaymentWebhook = catchAsync(async (req, res, next) => {
       // Cập nhật Class
       classToUpdate.reservedCount -= 1;
       classToUpdate.student.push(enrollment.student);
-
-      // --- ĐỒNG BỘ NGƯỢC VÀO STUDENT (CHO THUẬT TOÁN CŨ) ---
+      //cạp nhật Student
       studentToUpdate.class.push(enrollment.class);
       studentToUpdate.enrolled = true;
-      // --- KẾT THÚC ĐỒNG BỘ ---
+
+      await Payment.create(
+        [
+          {
+            user: studentToUpdate.user, 
+            amount: enrollment.amount,
+            providerPaymentId: enrollment.invoiceId, 
+            status: "succeeded",
+            description: `Thanh toán lớp ${classToUpdate.name} (HV: ${studentToUpdate.name})`,
+            invoiceId: enrollment._id.toString(), 
+            createdAt: enrollment.paidAt, 
+          },
+        ],
+        { session: session }
+      );
 
       // Lưu cả 3
       await enrollment.save({ session });
@@ -96,7 +107,7 @@ exports.handlePaymentWebhook = catchAsync(async (req, res, next) => {
 
       await session.commitTransaction();
 
-      // (Gửi email/SMS xác nhận ở đây)
+      notifyPaymentConfirmed(enrollment.student, enrollment);
 
       return res
         .status(200)
