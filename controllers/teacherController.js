@@ -7,6 +7,8 @@ const { LEVEL_ORDER } = require("../utils/levels");
 const Session = require("../models/sessionModel");
 const moment = require("moment-timezone");
 const mongoose = require("mongoose");
+const Class = require("../models/classModel");
+const Enrollment = require("../models/enrollmentModel");
 
 const isDay = (n) => Number.isInteger(n) && n >= 0 && n <= 6;
 
@@ -241,9 +243,52 @@ const getMySchedule = catchAsync(async (req, res, next) => {
     },
   });
 });
+
+const getStudentClassDetail = catchAsync(async (req, res, next) => {
+  const classId = req.params.id;
+  const teacher = req.user;
+
+  const [classInfo , sessions, enrollments] = await Promise.all([
+    Class.findById(classId)
+      .populate("course", "name level description")
+      .populate("preferredTeacher", "profile.fullname")
+      .lean(),
+
+    Session.find({
+      class: classId,
+      status: { $in: ["scheduled", "published"] },
+    })
+      .populate("room", "name")
+      .populate("teacher", "profile.fullname")
+      .sort({ sessionNo: 1, startAt: 1 })
+      .lean(),
+    
+    Enrollment.find({
+      class: classId,
+      status: "confirmed",
+    })
+      .select("student paidAt")
+      .populate("student")
+      .lean(),
+  ]);
+
+  if (!classInfo) {
+    return next(new AppError("Không tìm thấy lớp học", 404));
+  }
+
+  res.status(200).json({
+    status: "success",
+    data: {
+      classInfo,    
+      sessions,     
+      enrollments,  
+    },
+  });
+});
 module.exports = {
   registerShiftAvailability,
   updateTeacherSkills,
   getMyClasses,
-  getMySchedule
+  getMySchedule,
+  getStudentClassDetail
 };
