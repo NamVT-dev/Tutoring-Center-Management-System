@@ -9,6 +9,7 @@ const Enrollment = require("../models/enrollmentModel");
 const CustomScheduleRequest = require("../models/customScheduleRequestModel");
 const { mapScoreToLevel, getRoadmapLevels } = require("../utils/levels");
 const { LEVEL_INDEX } = require("../utils/levels");
+const { notifyHoldCreated } = require("../utils/notification");
 
 exports.getAllMyStudent = catchAsync(async (req, res) => {
   const user = await req.user.populate("student");
@@ -211,7 +212,7 @@ exports.getRoadmap = catchAsync(async (req, res, next) => {
     .lean();
 
   const availableClasses = upcomingClasses.filter((cls) => {
-    const confirmed = cls.confirmedStudents ? cls.confirmedStudents.length : 0;
+    const confirmed = cls.student ? cls.student.length : 0;
     const reserved = cls.reservedCount || 0;
     return confirmed + reserved < cls.maxStudent;
   });
@@ -268,7 +269,7 @@ exports.createCustomSchedule = catchAsync(async (req, res, next) => {
   });
 });
 
-const HOLD_TTL_MINUTES = 15;
+const HOLD_TTL_MINUTES = 1;
 
 exports.createSeatHold = catchAsync(async (req, res, next) => {
   const { student, classId } = req.body;
@@ -280,6 +281,7 @@ exports.createSeatHold = catchAsync(async (req, res, next) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
+  let newEnrollment = null;
   try {
     // 1. Tìm lớp và khóa học (để lấy giá) TRONG session
     const classToEnroll = await Class.findById(classId).session(session);
@@ -300,16 +302,21 @@ exports.createSeatHold = catchAsync(async (req, res, next) => {
       throw new AppError("Lớp đã đầy, vui lòng chọn lớp khác", 400);
     }
 
-    // 3. Check xem student đã hold/confirmed lớp này chưa
+    // 3. Check xem student đã hold/
+    // ed lớp này chưa
     const existingEnrollment = await Enrollment.findOne({
       student: student,
       class: classId,
+      status: { $in: ["hold", "confirmed"] }
     }).session(session);
 
     if (existingEnrollment) {
-      throw new AppError("Bạn đã đăng ký hoặc đang giữ chỗ lớp này", 409); // 409 Conflict
+      if (existingEnrollment.status === 'hold') {
+         throw new AppError("Bạn đang giữ chỗ lớp này. Vui lòng kiểm tra lại.", 409);
+      } else {
+         throw new AppError("Bạn đã đăng ký hoặc đang giữ chỗ lớp này", 409); // 409 Conflict
+      }
     }
-
     // 4. TĂNG reservedCount của lớp
     classToEnroll.reservedCount += 1;
     await classToEnroll.save({ session });
@@ -317,7 +324,7 @@ exports.createSeatHold = catchAsync(async (req, res, next) => {
     // 5. TẠO Enrollment (status='hold')
     const holdExpiresAt = new Date(Date.now() + HOLD_TTL_MINUTES * 60 * 1000);
 
-    const [newEnrollment] = await Enrollment.create(
+    [newEnrollment] = await Enrollment.create(
       [
         {
           student: student,
@@ -339,6 +346,8 @@ exports.createSeatHold = catchAsync(async (req, res, next) => {
       checkoutUrl: `https://payment.gateway.com/pay?enrollmentId=${newEnrollment._id}`,
       qrPayload: "EXAMPLE_QR_PAYLOAD_FOR_ENROLLMENT_" + newEnrollment._id,
     };
+
+    notifyHoldCreated(student, newEnrollment);
 
     res.status(201).json({
       status: "success",

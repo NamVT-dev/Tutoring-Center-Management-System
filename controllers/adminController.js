@@ -16,8 +16,8 @@ const getListTeacher = catchAsync(async (req, res) => {
     searchFields: ["username", "email", "level"],
     page,
     limit,
-    select: "username email active profile level avaiable",
-    sort: "-createdAt",
+    select: "username email active profile level skills",
+    sort: "-createdAt _id",
   });
 
   const [total, teachers] = await Promise.all([
