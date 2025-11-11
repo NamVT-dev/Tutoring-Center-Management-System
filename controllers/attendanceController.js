@@ -32,8 +32,8 @@ exports.startSession = catchAsync(async (req, res, next) => {
   if (!attendance) {
     attendance = await Attendance.create({
       session: session.id,
-      attendance: session.class.students.map((student) => ({
-        student,
+      attendance: session.class.student.map((s) => ({
+        student: s,
         status: "absent",
       })),
     });
