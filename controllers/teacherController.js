@@ -1,10 +1,12 @@
 const catchAsync = require("../utils/catchAsync");
 const AppError = require("../utils/appError");
-const { User, Teacher } = require("../models/userModel");
+const { Teacher } = require("../models/userModel");
 const Center = require("../models/centerModel");
 const Course = require("../models/courseModel");
+const Category = require("../models/categoryModel");
+const { LEVEL_ORDER } = require("../utils/levels");
+const mongoose = require("mongoose");
 
-const SHIFT_KEYS = new Set(["morning", "afternoon", "evening"]);
 const isDay = (n) => Number.isInteger(n) && n >= 0 && n <= 6;
 
 // Cho phép giáo viên đăng ký ca dạy theo config trung tâm.
@@ -19,10 +21,10 @@ const registerShiftAvailability = catchAsync(async (req, res, next) => {
   if (!cfg) {
     return next(new AppError("trung tâm chưa cấu hình ca hoạt động", 400));
   }
-  const activeDays = new Set(cfg.activeDaysOfWeek || []);
+
   const definedShiftNames = new Set(
     (cfg.shifts || []).map((s) => String(s.name).toUpperCase())
-  ); // ví dụ: S1..S6
+  );
   const allowedByDay = new Map(
     (cfg.dayShifts || []).map((r) => [
       r.dayOfWeek,
@@ -34,8 +36,9 @@ const registerShiftAvailability = catchAsync(async (req, res, next) => {
   for (const s of slots) {
     const day = Number(s?.dayOfWeek);
     if (!isDay(day)) return next(new AppError("dayOfWeek không hợp lệ", 400));
-    if (!Array.isArray(s.shifts) || !s.shifts.length === 0)
+    if (!Array.isArray(s.shifts) || s.shifts.length === 0)
       return next(new AppError("shifts phải là mảng theo ca", 400));
+
     const uniq = Array.from(
       new Set(s.shifts.map((x) => String(x).trim().toUpperCase()))
     ).filter((n) => definedShiftNames.has(n));
@@ -100,7 +103,7 @@ const registerShiftAvailability = catchAsync(async (req, res, next) => {
     { $set: { availability: compact } },
     { new: true, runValidators: true }
   )
-    .select("email availability teachCategories")
+    .select("email availability skills")
     .lean();
 
   if (!teacher) return next(new AppError("Không tìm thấy giáo viên", 404));
@@ -108,41 +111,74 @@ const registerShiftAvailability = catchAsync(async (req, res, next) => {
   res.status(200).json({ status: "success", data: { teacher } });
 });
 
-const registerTeachCategories = catchAsync(async (req, res, next) => {
-  const teacherId = req.user.id;
-  const { categories } = req.body;
+const updateTeacherSkills = catchAsync(async (req, res, next) => {
+  const teacherId = req.params.id;
+  const { skills } = req.body;
 
-  if (!Array.isArray(categories) || !categories.length)
-    return next(new AppError("categories phải là mảng không rỗng", 400));
+  if (!Array.isArray(skills))
+    return next(new AppError("skills phải là mảng không rỗng", 400));
 
-  const normalized = [...new Set(categories.map((s) => String(s).trim()))];
-  const validCategories = await Course.distinct("category", {
-    category: { $ne: null },
+  const normalizedSkills = [];
+  const categoryIdsToValidate = [];
+
+  for (const skill of skills) {
+    if (!skill.category || !mongoose.Types.ObjectId.isValid(skill.category)) {
+      return next(new AppError("Mỗi skill phải có 'category' ID hợp lệ", 400));
+    }
+
+    const levels = skill.levels || [];
+    if (!Array.isArray(levels)) {
+      return next(new AppError(`Trường 'levels' phải là mảng`, 400));
+    }
+    const LEVEL_SET = new Set(LEVEL_ORDER);
+    const invalidLevels = levels.filter((l) => !LEVEL_SET.has(l));
+    if (invalidLevels.length > 0) {
+      return next(
+        new AppError(`Các level không hợp lệ: ${invalidLevels.join(", ")}`, 400)
+      );
+    }
+
+    categoryIdsToValidate.push(skill.category);
+    normalizedSkills.push({
+      category: skill.category,
+      levels: levels,
+      includeLowerLevels: !!skill.includeLowerLevels,
+      anyLevel: !!skill.anyLevel,
+    });
+  }
+
+  const uniqueCategoryIds = [...new Set(categoryIdsToValidate)];
+  const foundCategoriesCount = await Category.countDocuments({
+    _id: { $in: uniqueCategoryIds },
   });
-
-  const invalid = normalized.filter((c) => !validCategories.includes(c));
-  if (invalid.length)
-    return next(
-      new AppError(`Category không hợp lệ: ${invalid.join(", ")}`, 400)
-    );
+  if (foundCategoriesCount !== uniqueCategoryIds.length) {
+    return next(new AppError("category ID không tồn tại", 400));
+  }
 
   const teacher = await Teacher.findOneAndUpdate(
     { _id: teacherId, role: "teacher" },
-    { $set: { teachCategories: normalized } },
+    {
+      $set: {
+        skills: normalizedSkills,
+        teachCategories: [],
+      },
+    },
     { new: true, runValidators: true }
   )
-    .select("email teachCategories availability")
+    .select("email skills availability")
+    .populate("skills.category", "name")
     .lean();
 
   if (!teacher) return next(new AppError("Không tìm thấy giáo viên", 404));
+
   res.status(200).json({
     status: "success",
-    message: "Cập nhật môn dạy thành công",
+    message: "Cập nhật kỹ năng dạy thành công",
     data: { teacher },
   });
 });
 
 module.exports = {
   registerShiftAvailability,
-  registerTeachCategories,
+  updateTeacherSkills,
 };

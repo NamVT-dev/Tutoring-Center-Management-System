@@ -12,5 +12,5 @@ route.use(authCtrl.restrictTo("teacher"));
 route.get("/categories", getCourseCategories);
 route.get("/shift", getConfig);
 route.patch("/register-shift", teacherController.registerShiftAvailability);
-route.patch("/register-categories", teacherController.registerTeachCategories);
+
 module.exports = route;
