@@ -199,13 +199,51 @@ const getMyClasses = catchAsync(async (req, res, next) => {
   res.status(200).json({
     status: "success",
     data: {
-      teacher
-    }
+      teacher,
+    },
   });
 });
 
+const getMySchedule = catchAsync(async (req, res, next) => {
+  const teacherId = req.user.id;
+  const timezone = "Asia/Ho_Chi_Minh";
+
+  let { startDate, endDate } = req.query;
+  const start = startDate
+    ? moment.tz(startDate, timezone).startOf("day")
+    : moment.tz(timezone).startOf("day");
+
+  const end = endDate
+    ? moment.tz(endDate, timezone).endOf("day")
+    : start.clone().add(7, "days").endOf("day");
+
+  const sessions = await Session.find({
+    teacher: teacherId,
+    status: { $in: ["scheduled", "published"] },
+    startAt: {
+      $gte: start.toDate(),
+      $lte: end.toDate(),
+    },
+  })
+    .populate({
+      path: "class",
+    })
+    .populate({
+      path: "room",
+    })
+    .sort({ startAt: 1 });
+
+  res.status(200).json({
+    status: "success",
+    results: sessions.length,
+    data: {
+      sessions,
+    },
+  });
+});
 module.exports = {
   registerShiftAvailability,
   updateTeacherSkills,
-  getMyClasses
+  getMyClasses,
+  getMySchedule
 };

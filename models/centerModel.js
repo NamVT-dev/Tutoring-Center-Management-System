@@ -55,7 +55,7 @@ const centerSchema = new mongoose.Schema(
     },
     timezone: {
       type: String,
-      default: "Asia/Bangkok",
+      default: "Asia/Ho_Chi_Minh",
     },
     activeDaysOfWeek: {
       type: [Number], // 0=CN .. 6=Th7
