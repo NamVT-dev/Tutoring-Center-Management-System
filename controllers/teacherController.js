@@ -2,9 +2,10 @@ const catchAsync = require("../utils/catchAsync");
 const AppError = require("../utils/appError");
 const { Teacher } = require("../models/userModel");
 const Center = require("../models/centerModel");
-const Course = require("../models/courseModel");
 const Category = require("../models/categoryModel");
 const { LEVEL_ORDER } = require("../utils/levels");
+const Session = require("../models/sessionModel");
+const moment = require("moment-timezone");
 const mongoose = require("mongoose");
 
 const isDay = (n) => Number.isInteger(n) && n >= 0 && n <= 6;
@@ -87,7 +88,7 @@ const registerShiftAvailability = catchAsync(async (req, res, next) => {
       effective: r.effective,
     };
     r.shifts.forEach((x) => prev.shifts.add(x));
-    if (r.effective) prev.effective = r.effective; // giữ bản ghi effective mới nhất
+    if (r.effective) prev.effective = r.effective;
     byDay.set(r.dayOfWeek, prev);
   }
   const compact = Array.from(byDay.values())
@@ -178,7 +179,33 @@ const updateTeacherSkills = catchAsync(async (req, res, next) => {
   });
 });
 
+const getMyClasses = catchAsync(async (req, res, next) => {
+  const teacherId = req.user.id;
+
+  const teacher = await Teacher.findById(teacherId)
+    .select("class")
+    .populate({
+      path: "class",
+      populate: {
+        path: "course",
+        select: "name level",
+      },
+    });
+
+  if (!teacher) {
+    return next(new AppError("Không tìm thấy hồ sơ giáo viên", 404));
+  }
+
+  res.status(200).json({
+    status: "success",
+    data: {
+      teacher
+    }
+  });
+});
+
 module.exports = {
   registerShiftAvailability,
   updateTeacherSkills,
+  getMyClasses
 };
