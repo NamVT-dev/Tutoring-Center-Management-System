@@ -16,7 +16,7 @@ exports.getTodaySession = catchAsync(async (req, res) => {
       $gte: start,
       $lte: end,
     },
-  });
+  }).populate("class room");
 
   res.status(201).json({
     status: "success",
