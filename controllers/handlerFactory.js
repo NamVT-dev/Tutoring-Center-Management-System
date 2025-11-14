@@ -80,12 +80,17 @@ exports.getAll = (Model, searchTerm) =>
       .paginate()
       .search();
 
+    const totalDocuments = await features.countDocuments(Model);
+
     const doc = await features.query;
+    const limit = req.query.limit * 1 || 100;
+    const totalPages = Math.ceil(totalDocuments / limit);
 
     // SEND RESPONSE
     res.status(200).json({
       status: "success",
       results: doc.length,
+      totalPages,
       data: {
         data: doc,
       },

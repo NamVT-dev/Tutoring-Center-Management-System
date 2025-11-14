@@ -117,6 +117,11 @@ const updateTeacher = catchAsync(async (req, res, next) => {
 const deleteTeacher = factory.deleteOne(Teacher);
 
 const accountFilterForStaff = (req, res, next) => {
+  if (
+    req.query.role &&
+    (req.query.role === "member" || req.query.role === "teacher")
+  )
+    return next();
   req.query.role = ["member", "teacher"];
   next();
 };

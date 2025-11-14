@@ -42,6 +42,32 @@ class APIFeatures {
     return this;
   }
 
+  async countDocuments(Model) {
+    const queryObj = { ...this.queryString };
+    const excludedFields = ["page", "sort", "limit", "fields", "search"];
+    excludedFields.forEach((el) => delete queryObj[el]);
+
+    let queryStr = JSON.stringify(queryObj);
+    queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
+    const filter = JSON.parse(queryStr);
+
+    // search
+    if (this.queryString.search && this.searchTerm.length > 0) {
+      const search = {
+        $or: this.searchTerm.map((term) => ({
+          [term]: {
+            $regex: _.escapeRegExp(this.queryString.search),
+            $options: "i",
+          },
+        })),
+      };
+
+      return await Model.countDocuments({ ...filter, ...search });
+    }
+
+    return await Model.countDocuments(filter);
+  }
+
   paginate() {
     const page = this.queryString.page * 1 || 1;
     const limit = this.queryString.limit * 1 || 100;
