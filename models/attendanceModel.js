@@ -24,6 +24,11 @@ const attendanceSchema = new mongoose.Schema({
   ],
 });
 
+attendanceSchema.pre(/^find/, function (next) {
+  this.populate("attendance.student");
+  next();
+});
+
 const Attendance = mongoose.model(
   "Attendance",
   attendanceSchema,

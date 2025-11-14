@@ -63,5 +63,10 @@ sessionSchema.index(
   { unique: true, partialFilterExpression: { sessionNo: { $exists: true } } }
 );
 
+sessionSchema.pre(/^find/, function (next) {
+  this.populate("class course teacher");
+  next();
+});
+
 const Session = mongoose.model("Session", sessionSchema, "sessions");
 module.exports = Session;
