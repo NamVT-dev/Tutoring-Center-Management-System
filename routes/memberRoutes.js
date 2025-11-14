@@ -22,4 +22,7 @@ route.get("/:id/roadmap", studentCtrl.getRoadmap);
 route.post("/custom-schedule", studentCtrl.createCustomSchedule);
 route.post("/enrollment", studentCtrl.createSeatHold);
 
+route.get("/:id/classes",studentCtrl.getMyEnrolledClasses);
+route.get("/:id/classes/:classId",studentCtrl.getStudentClassDetail);
+route.get("/:id/schedule",studentCtrl.getMySchedule);
 module.exports = route;
