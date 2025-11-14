@@ -26,7 +26,7 @@ exports.getTodaySession = catchAsync(async (req, res) => {
 
 exports.startSession = catchAsync(async (req, res, next) => {
   const session = await Session.findById(req.params.id).populate("class");
-  if (!session || session.teacher.toString() !== req.user.id)
+  if (!session || session.teacher.id.toString() !== req.user.id)
     return next(new AppError("Không tìm thấy session", 404));
   let attendance = await Attendance.findOne({ session: session.id });
   if (!attendance) {
