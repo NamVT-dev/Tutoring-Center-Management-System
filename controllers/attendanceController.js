@@ -52,7 +52,7 @@ exports.takeAttendance = catchAsync(async (req, res, next) => {
 
   if (
     !attandanceSession ||
-    attandanceSession.session.teacher.toString() !== req.user.id
+    attandanceSession.session.teacher.id.toString() !== req.user.id
   )
     return next(new AppError("Không tìm thấy session", 404));
 
