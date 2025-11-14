@@ -6,10 +6,12 @@ const Class = require("../models/classModel");
 const Center = require("../models/centerModel");
 const mongoose = require("mongoose");
 const Enrollment = require("../models/enrollmentModel");
+const Session = require("../models/sessionModel");
 const CustomScheduleRequest = require("../models/customScheduleRequestModel");
 const { mapScoreToLevel, getRoadmapLevels } = require("../utils/levels");
 const { LEVEL_INDEX } = require("../utils/levels");
 const { notifyHoldCreated } = require("../utils/notification");
+const moment = require("moment-timezone");
 
 exports.getAllMyStudent = catchAsync(async (req, res) => {
   const user = await req.user.populate("student");
@@ -366,4 +368,179 @@ exports.createSeatHold = catchAsync(async (req, res, next) => {
     // 10. Luôn luôn kết thúc session
     session.endSession();
   }
+});
+
+exports.getMyEnrolledClasses = catchAsync(async (req, res, next) => {
+  const studentId = req.params.id;
+  const userId = req.user.id;
+
+  const isOwner = req.user.student.some(
+    (s) => s._id.toString() === studentId
+  );
+  if(!isOwner){
+    return next(
+      new AppError("Bạn không có quyền xem danh sách lớp của học viên này", 403)
+    );
+  }
+
+  const enrollments = await Enrollment.find({
+    student: studentId,
+    status: "confirmed",
+  })
+    .populate({
+      path: "class",
+      select: "name classCode startAt endAt preferredTeacher status", 
+      populate: {
+        path: "preferredTeacher", 
+        select: "profile.fullname",
+      },
+    })
+    .sort({ createdAt: -1 });
+    
+  const classes = enrollments.map((enr) => enr.class);
+
+  res.status(200).json({
+    status: "success",
+    results: classes.length,
+    data: {
+      classes,
+    },
+  });
+});
+
+exports.getStudentClassDetail = catchAsync(async (req, res, next) => {
+  const { id: studentId, classId } = req.params;
+  const userId = req.user.id;
+
+  const isOwner = req.user.student.some(
+    (s) => s._id.toString() === studentId
+  );
+  if (!isOwner) {
+    return next(
+      new AppError("Bạn không có quyền xem thông tin của học viên này", 403)
+    );
+  }
+
+  const isEnrolled = await Enrollment.exists({
+    student: studentId,
+    class: classId,
+    status: "confirmed",
+  });
+  if (!isEnrolled) {
+    return next(new AppError("Học viên này không tham gia lớp học này", 403));
+  }
+  const [classInfo, sessions, enrollments] = await Promise.all([
+    // A. Lấy thông tin Lớp và Khóa học
+    Class.findById(classId)
+      .populate({
+        path: "course",
+        select: "name level description",
+      })
+      .populate({
+        path: "preferredTeacher",
+        select: "profile.fullname",
+      })
+      .lean(),
+
+    // B. Lấy toàn bộ lịch học (Sessions)
+    Session.find({
+      class: classId,
+      status: { $in: ["scheduled", "published"] },
+    })
+      .populate("room", "name")
+      .populate("teacher", "profile.fullname")
+      .sort({ sessionNo: 1, startAt: 1 })
+      .lean(),
+
+    Enrollment.find({
+      class: classId,
+      status: "confirmed",
+    })
+      .select("student")
+      .populate({
+        path: "student",
+        select: "name", 
+      })
+      .lean(),
+  ]);
+
+  if (!classInfo) {
+    return next(new AppError("Không tìm thấy lớp học", 404));
+  }
+
+  res.status(200).json({
+    status: "success",
+    data: {
+      classInfo,    
+      sessions,    
+      enrollments,  
+    },
+  });
+});
+
+exports.getMySchedule = catchAsync(async (req, res, next) => {
+  const studentId = req.params.id;
+  const userId = req.user.id;
+  const timezone = "Asia/Ho_Chi_Minh";
+
+  const isOwner = req.user.student.some(
+    (s) => s._id.toString() === studentId
+  );
+  if (!isOwner) {
+    return next(
+      new AppError("Bạn không có quyền xem lịch học của học viên này", 403)
+    );
+  }
+
+  let { startDate, endDate } = req.query;
+  const start = startDate
+    ? moment.tz(startDate, timezone).startOf("day")
+    : moment.tz(timezone).startOf("day");
+  const end = endDate
+    ? moment.tz(endDate, timezone).endOf("day")
+    : start.clone().add(7, "days").endOf("day");
+
+  if (start.isAfter(end)) {
+    return next(new AppError("Ngày bắt đầu không thể sau ngày kết thúc", 400));
+  }
+
+  const enrollments = await Enrollment.find({
+    student: studentId,
+    status: "confirmed",
+  })
+    .select("class") 
+    .lean();
+
+  const classIds = enrollments.map((enr) => enr.class);
+
+  
+  const sessions = await Session.find({
+    class: { $in: classIds },
+    status: { $in: ["scheduled", "published"] },
+    startAt: {
+      $gte: start.toDate(),
+      $lte: end.toDate(),
+    },
+  })
+    .populate({
+      path: "class",
+      select: "name classCode",
+    })
+    .populate({
+      path: "room",
+      select: "name",
+    })
+    .populate({
+      path: "teacher",
+      select: "profile.fullname",
+    })
+    .sort({ startAt: 1 });
+
+  res.status(200).json({
+    status: "success",
+    results: sessions.length,
+    data: {
+      sessions,
+    },
+  });
 });
