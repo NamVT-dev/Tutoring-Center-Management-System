@@ -8,8 +8,7 @@ const mongoose = require("mongoose");
 const Enrollment = require("../models/enrollmentModel");
 const Session = require("../models/sessionModel");
 const CustomScheduleRequest = require("../models/customScheduleRequestModel");
-const { mapScoreToLevel, getRoadmapLevels } = require("../utils/levels");
-const { LEVEL_INDEX } = require("../utils/levels");
+const { mapScoreToLevel, getRoadmapLevels,LEVEL_INDEX } = require("../utils/levels");
 const { notifyHoldCreated } = require("../utils/notification");
 const moment = require("moment-timezone");
 
@@ -271,7 +270,7 @@ exports.createCustomSchedule = catchAsync(async (req, res, next) => {
   });
 });
 
-const HOLD_TTL_MINUTES = 1;
+const HOLD_TTL_MINUTES = 15;
 
 exports.createSeatHold = catchAsync(async (req, res, next) => {
   const { student, classId } = req.body;

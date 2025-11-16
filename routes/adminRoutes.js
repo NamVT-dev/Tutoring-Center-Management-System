@@ -7,6 +7,7 @@ const authCtrl = require("../controllers/authController");
 const categoryCtrl = require("../controllers/categoryController");
 const classCtrl = require("../controllers/classController");
 const staffCtrl = require("../controllers/staffController");
+const dashboardCtrl = require("../controllers/dashboardController");
 const route = express.Router();
 
 //auth for admin
@@ -60,5 +61,8 @@ route.get("/staff", staffCtrl.getAllStaff);
 route.get("/staff/:id", staffCtrl.getOneStaff);
 route.post("/staff", staffCtrl.createStaff);
 route.delete("/staff/:id", staffCtrl.deleteStaff);
+
+//dashboard
+route.get("/student-demand", dashboardCtrl.getStudentDemandReport);
 
 module.exports = route;
