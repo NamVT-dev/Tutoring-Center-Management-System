@@ -65,7 +65,8 @@ route.delete("/staff/:id", staffCtrl.deleteStaff);
 
 //dashboard
 route.get("/student-demand", dashboardCtrl.getStudentDemandReport);
-
+route.get("/dashboard", dashboardCtrl.getDashboardOverview);
+route.get("/reports/revenue",dashboardCtrl.getRevenueReport);
 //quan ly session
 route.patch("/session/:id",sessionCtrl.updateSession);
 module.exports = route;
