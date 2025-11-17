@@ -96,3 +96,17 @@ exports.getAll = (Model, searchTerm) =>
       },
     });
   });
+
+exports.createMany = (Model) =>
+  catchAsync(async (req, res) => {
+    const results = [];
+    for (let i = 0; i < req.body.length; i++) {
+      const doc = await Model.create(req.body[i]);
+      results.push(doc);
+    }
+
+    res.status(201).json({
+      status: "success",
+      data: results,
+    });
+  });

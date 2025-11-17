@@ -251,3 +251,5 @@ exports.applyChangeTeacher = catchAsync(async (req, res) => {
 exports.createClass = factory.createOne(Class);
 exports.updateClass = factory.updateOne(Class);
 exports.deleteClass = factory.deleteOne(Class);
+
+exports.createManySession = factory.createMany(Session);
