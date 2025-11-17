@@ -56,7 +56,7 @@ route.get("/classes", classCtrl.listClasses);
 route.get("/classes/:id", classCtrl.getClassDetail);
 route.patch("/classes/:id/preview", classCtrl.previewChangeTeacher);
 route.patch("/classes/:id/apply", classCtrl.applyChangeTeacher);
-
+route.patch("/classes/:id/cancel",classCtrl.cancelClass)
 //quan ly staff
 route.get("/staff", staffCtrl.getAllStaff);
 route.get("/staff/:id", staffCtrl.getOneStaff);
