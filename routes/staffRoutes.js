@@ -25,6 +25,7 @@ route.get("/transaction/:id", paymentController.getOne);
 
 //class
 route.post("/class", classController.createClass);
+route.post("/class/session", classController.createManySession);
 route.patch("/class/:id", classController.updateClass);
 route.delete("/class/:id", classController.deleteClass);
 
