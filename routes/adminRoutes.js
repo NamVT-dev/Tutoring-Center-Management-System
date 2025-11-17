@@ -8,6 +8,7 @@ const categoryCtrl = require("../controllers/categoryController");
 const classCtrl = require("../controllers/classController");
 const staffCtrl = require("../controllers/staffController");
 const dashboardCtrl = require("../controllers/dashboardController");
+const sessionCtrl = require("../controllers/sessionController");
 const route = express.Router();
 
 //auth for admin
@@ -65,4 +66,6 @@ route.delete("/staff/:id", staffCtrl.deleteStaff);
 //dashboard
 route.get("/student-demand", dashboardCtrl.getStudentDemandReport);
 
+//quan ly session
+route.patch("/session/:id",sessionCtrl.updateSession);
 module.exports = route;

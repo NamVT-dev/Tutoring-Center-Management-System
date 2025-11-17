@@ -30,7 +30,7 @@ const sessionSchema = new mongoose.Schema(
     // Thời gian thực tế (UTC)
     startAt: { type: Date, required: true, index: true },
     endAt: { type: Date, required: true, index: true },
-    timezone: { type: String, default: "Asia/Bangkok" },
+    timezone: { type: String, default: "Asia/Ho_Chi_Minh" },
 
     status: {
       type: String,
