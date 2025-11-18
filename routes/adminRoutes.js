@@ -7,6 +7,8 @@ const authCtrl = require("../controllers/authController");
 const categoryCtrl = require("../controllers/categoryController");
 const classCtrl = require("../controllers/classController");
 const staffCtrl = require("../controllers/staffController");
+const dashboardCtrl = require("../controllers/dashboardController");
+const sessionCtrl = require("../controllers/sessionController");
 const route = express.Router();
 
 //auth for admin
@@ -54,11 +56,17 @@ route.get("/classes", classCtrl.listClasses);
 route.get("/classes/:id", classCtrl.getClassDetail);
 route.patch("/classes/:id/preview", classCtrl.previewChangeTeacher);
 route.patch("/classes/:id/apply", classCtrl.applyChangeTeacher);
-
+route.patch("/classes/:id/cancel",classCtrl.cancelClass)
 //quan ly staff
 route.get("/staff", staffCtrl.getAllStaff);
 route.get("/staff/:id", staffCtrl.getOneStaff);
 route.post("/staff", staffCtrl.createStaff);
 route.delete("/staff/:id", staffCtrl.deleteStaff);
 
+//dashboard
+route.get("/student-demand", dashboardCtrl.getStudentDemandReport);
+route.get("/dashboard", dashboardCtrl.getDashboardOverview);
+route.get("/reports/revenue",dashboardCtrl.getRevenueReport);
+//quan ly session
+route.patch("/session/:id",sessionCtrl.updateSession);
 module.exports = route;

@@ -6,6 +6,7 @@ const Class = require("../models/classModel");
 const Session = require("../models/sessionModel");
 const Center = require("../models/centerModel");
 const Course = require("../models/courseModel");
+const { Teacher } = require("../models/userModel");
 const factory = require("./handlerFactory");
 
 const {
@@ -247,7 +248,65 @@ exports.applyChangeTeacher = catchAsync(async (req, res) => {
   });
   res.status(200).json({ status: "success", applied: result });
 });
+exports.cancelClass = catchAsync(async (req, res, next) => {
+  const classId = req.params.id;
 
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const classToCancel = await Class.findById(classId).session(session);
+    if (!classToCancel) {
+      throw new AppError("Không tìm thấy lớp học", 404);
+    }
+    if (classToCancel.status === "canceled") {
+      throw new AppError("Lớp này đã bị hủy trước đó", 400);
+    }
+    const hasConfirmed =
+      classToCancel.student && classToCancel.student.length > 0;
+    const hasHolding = classToCancel.reservedCount > 0;
+
+    if (hasConfirmed || hasHolding) {
+      throw new AppError(
+        "Không thể hủy. Lớp đã có học viên (confirmed hoặc holding). Vui lòng chuyển học viên trước.",
+        400
+      );
+    }
+    classToCancel.status = "canceled";
+    const teacherId = classToCancel.preferredTeacher;
+    await Promise.all([
+      // Lưu trạng thái Class
+      classToCancel.save({ session }),
+
+      // Hủy tất cả Sessions liên quan
+      Session.updateMany(
+        { class: classId },
+        { $set: { status: "canceled" } },
+        { session }
+      ),
+
+      // Gỡ lớp khỏi Giáo viên
+      Teacher.findByIdAndUpdate(
+        teacherId,
+        { $pull: { class: classId } },
+        { session }
+      ),
+    ]);
+    await session.commitTransaction();
+    res.status(200).json({
+      status: "success",
+      message: "Lớp học và các buổi học liên quan đã được hủy thành công.",
+      data: {
+        class: classToCancel,
+      },
+    });
+  } catch (error) {
+    await session.abortTransaction();
+    next(error); 
+  } finally {
+    session.endSession();
+  }
+});
 exports.createClass = factory.createOne(Class);
 exports.updateClass = factory.updateOne(Class);
 exports.deleteClass = factory.deleteOne(Class);
