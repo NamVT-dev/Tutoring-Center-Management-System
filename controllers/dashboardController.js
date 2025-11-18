@@ -74,26 +74,26 @@ exports.getStudentDemandReport = catchAsync(async (req, res, next) => {
 
   const start = startDate
     ? moment.tz(startDate, timezone).startOf("day").toDate()
-    : moment.tz(timezone).subtract(7, 'days').startOf("day").toDate();
+    : moment.tz(timezone).subtract(7, "days").startOf("day").toDate();
 
   const end = endDate
     ? moment.tz(endDate, timezone).endOf("day").toDate()
     : moment.tz(timezone).endOf("day").toDate();
 
   if (start > end) {
-      return next(new AppError("Ngày bắt đầu không thể sau ngày kết thúc", 400));
+    return next(new AppError("Ngày bắt đầu không thể sau ngày kết thúc", 400));
   }
 
   const [newLeads, waitingStudents] = await Promise.all([
     findNewLeads(start, end),
-    findWaitingStudents(start), 
+    findWaitingStudents(start),
   ]);
 
   res.status(200).json({
     status: "success",
     filterDate: {
       filterStartDate: start,
-      filterEndDate: end
+      filterEndDate: end,
     },
     data: {
       newLeads: {
@@ -108,19 +108,18 @@ exports.getStudentDemandReport = catchAsync(async (req, res, next) => {
   });
 });
 exports.getDashboardOverview = catchAsync(async (req, res, next) => {
-
   const timezone = "Asia/Ho_Chi_Minh";
-  const startOfMonth = moment.tz(timezone).startOf('month').toDate();
-  const endOfMonth = moment.tz(timezone).endOf('month').toDate();
+  const startOfMonth = moment.tz(timezone).startOf("month").toDate();
+  const endOfMonth = moment.tz(timezone).endOf("month").toDate();
   const now = new Date();
 
   const [
     memberStats,
     teacherStats,
     classStats,
-    complaintStats, 
+    complaintStats,
     enrollmentStats,
-    revenueStats
+    revenueStats,
   ] = await Promise.all([
     User.aggregate([
       { $match: { role: "member" } },
@@ -129,12 +128,12 @@ exports.getDashboardOverview = catchAsync(async (req, res, next) => {
           _id: null,
           totalMembers: { $sum: 1 },
           newMembersThisMonth: {
-            $sum: { $cond: [ { $gte: ["$createdAt", startOfMonth] }, 1, 0 ] }
-          }
-        }
-      }
+            $sum: { $cond: [{ $gte: ["$createdAt", startOfMonth] }, 1, 0] },
+          },
+        },
+      },
     ]),
-    
+
     Teacher.countDocuments(),
 
     Class.aggregate([
@@ -144,10 +143,10 @@ exports.getDashboardOverview = catchAsync(async (req, res, next) => {
           _id: null,
           totalClasses: { $sum: 1 },
           newClassesThisMonth: {
-            $sum: { $cond: [ { $gte: ["$createdAt", startOfMonth] }, 1, 0 ] }
-          }
-        }
-      }
+            $sum: { $cond: [{ $gte: ["$createdAt", startOfMonth] }, 1, 0] },
+          },
+        },
+      },
     ]),
 
     Complain.aggregate([
@@ -156,174 +155,226 @@ exports.getDashboardOverview = catchAsync(async (req, res, next) => {
           _id: null,
           totalComplaints: { $sum: 1 },
           processedComplaints: {
-            $sum: { $cond: [ { $in: ["$status", ["Resolved", "Closed", "Rejected"]] }, 1, 0 ] }
+            $sum: {
+              $cond: [
+                { $in: ["$status", ["Resolved", "Closed", "Rejected"]] },
+                1,
+                0,
+              ],
+            },
           },
           unprocessedComplaints: {
-            $sum: { $cond: [ { $in: ["$status", ["Pending", "Received", "In_Progress"]] }, 1, 0 ] }
-          }
-        }
-      }
+            $sum: {
+              $cond: [
+                { $in: ["$status", ["Pending", "Received", "In_Progress"]] },
+                1,
+                0,
+              ],
+            },
+          },
+        },
+      },
     ]),
 
     Enrollment.countDocuments({
       status: "confirmed",
-      paidAt: { $gte: startOfMonth }
+      paidAt: { $gte: startOfMonth },
     }),
-    
+
     Payment.aggregate([
       {
         $match: {
           status: "succeeded",
-          createdAt: { $gte: startOfMonth, $lte: endOfMonth }
-        }
+          createdAt: { $gte: startOfMonth, $lte: endOfMonth },
+        },
       },
       {
         $group: {
           _id: null,
-          totalRevenueThisMonth: { $sum: "$amount" }
-        }
-      }
-    ])
+          totalRevenueThisMonth: { $sum: "$amount" },
+        },
+      },
+    ]),
   ]);
 
   const overview = {
     totalMembers: memberStats[0]?.totalMembers || 0,
     newMembersThisMonth: memberStats[0]?.newMembersThisMonth || 0,
-    
+
     totalTeachers: teacherStats || 0,
-    
+
     totalClasses: classStats[0]?.totalClasses || 0,
     newClassesThisMonth: classStats[0]?.newClassesThisMonth || 0,
-    
+
     totalComplaints: complaintStats[0]?.totalComplaints || 0,
     processedComplaints: complaintStats[0]?.processedComplaints || 0,
     unprocessedComplaints: complaintStats[0]?.unprocessedComplaints || 0,
 
     newEnrollmentsThisMonth: enrollmentStats || 0,
     totalRevenueThisMonth: revenueStats[0]?.totalRevenueThisMonth || 0,
-    lastUpdatedAt: now
+    lastUpdatedAt: now,
   };
 
   res.status(200).json({
     status: "success",
-    data: overview
+    data: overview,
   });
 });
 const getReportDateRange = (mode, dateStr, timezone) => {
   let start, end, unit;
 
-  if (mode === 'year') {
-    const yearMoment = dateStr ? moment.tz(dateStr, "YYYY", timezone) : moment.tz(timezone);
-    start = yearMoment.clone().startOf('year');
-    end = yearMoment.clone().endOf('year');
-    unit = 'month'; 
+  const inputDate = dateStr
+    ? moment.tz(dateStr, timezone)
+    : moment.tz(timezone);
+  if (mode === "year") {
+    start = inputDate.clone().startOf("year");
+    end = inputDate.clone().endOf("year");
+    unit = "month";
   } else {
-
-    const monthMoment = dateStr ? moment.tz(dateStr, "YYYY-MM", timezone) : moment.tz(timezone);
-    start = monthMoment.clone().startOf('month');
-    end = monthMoment.clone().endOf('month');
-    unit = 'day'; 
+    start = inputDate.clone().startOf("month");
+    end = inputDate.clone().endOf("month");
+    unit = "day";
   }
 
   return { start: start.toDate(), end: end.toDate(), unit };
 };
 exports.getRevenueReport = catchAsync(async (req, res, next) => {
   const timezone = "Asia/Ho_Chi_Minh";
-  const { mode = 'month', date } = req.query; 
+  const { mode = "month", date } = req.query;
   const { start, end, unit } = getReportDateRange(mode, date, timezone);
 
-  const [
-    mainStats,
-    statusStats,
-    chartData
-  ] = await Promise.all([
+  const [mainStats, statusStats, chartDataRaw] = await Promise.all([
     Payment.aggregate([
       {
         $match: {
           status: "succeeded",
-          createdAt: { $gte: start, $lte: end }
-        }
+          createdAt: { $gte: start, $lte: end },
+        },
       },
       {
         $group: {
           _id: null,
-          totalRevenue: { $sum: "$amount" }
-        }
-      }
+          totalRevenue: { $sum: "$amount" },
+        },
+      },
     ]),
 
     Payment.aggregate([
       {
         $match: {
-          createdAt: { $gte: start, $lte: end }
-        }
+          createdAt: { $gte: start, $lte: end },
+        },
       },
       {
         $group: {
           _id: "$status",
-          count: { $sum: 1 }
-        }
-      }
+          count: { $sum: 1 },
+        },
+      },
     ]),
 
     Payment.aggregate([
       {
         $match: {
           status: "succeeded",
-          createdAt: { $gte: start, $lte: end }
-        }
+          createdAt: { $gte: start, $lte: end },
+        },
       },
       {
         $group: {
-          _id: (unit === 'day') 
-            ? { $dateToString: { format: "%Y-%m-%d", date: "$createdAt", timezone } }
-            : { $dateToString: { format: "%Y-%m", date: "$createdAt", timezone } },
-          revenue: { $sum: "$amount" }
-        }
+          _id:
+            unit === "day"
+              ? {
+                  $dateToString: {
+                    format: "%Y-%m-%d",
+                    date: "$createdAt",
+                    timezone,
+                  },
+                }
+              : {
+                  $dateToString: {
+                    format: "%Y-%m",
+                    date: "$createdAt",
+                    timezone,
+                  },
+                },
+          revenue: { $sum: "$amount" },
+        },
       },
-      { $sort: { _id: 1 } } 
-    ])
+      { $sort: { _id: 1 } },
+    ]),
   ]);
 
+  const chart = [];
+  const startMoment = moment(start);
+
+  if (mode === "year") {
+    for (let i = 0; i < 12; i++) {
+      const currentMonth = startMoment.clone().add(i, "months");
+      const labelKey = currentMonth.format("YYYY-MM");
+      const foundData = chartDataRaw.find((item) => item._id === labelKey);
+
+      chart.push({
+        label: labelKey,
+        displayLabel: `T${i + 1}`,
+        revenue: foundData ? foundData.revenue : 0,
+      });
+    }
+  } else {
+    const daysInMonth = startMoment.daysInMonth();
+
+    for (let i = 0; i < daysInMonth; i++) {
+      const currentDay = startMoment.clone().add(i, "days");
+      const labelKey = currentDay.format("YYYY-MM-DD");
+
+      const foundData = chartDataRaw.find((item) => item._id === labelKey);
+
+      chart.push({
+        label: labelKey,
+        displayLabel: currentDay.format("DD/MM"),
+        revenue: foundData ? foundData.revenue : 0,
+      });
+    }
+  }
   const totalRevenue = mainStats[0]?.totalRevenue || 0;
-  const numDays = moment(end).diff(moment(start), 'days') + 1;
-  const numWeeks = Math.max(1, moment(end).diff(moment(start), 'weeks'));
-  const numMonths = Math.max(1, moment(end).diff(moment(start), 'months'));
-  
+
+  const avgRevenue = chart.length > 0 ? totalRevenue / chart.length : 0;
+
+  const numWeeks = Math.max(1, moment(end).diff(moment(start), "weeks"));
+  const avgWeeklyRevenue = totalRevenue / numWeeks;
+
   const stats = {
-    totalRevenue: totalRevenue,
-    avgMonthlyRevenue: (totalRevenue / numMonths),
-    avgWeeklyRevenue: (totalRevenue / numWeeks),
+    totalRevenue,
+    avgRevenue,
+    avgWeeklyRevenue,
   };
 
   const transactionStatus = {
     succeeded: 0,
     processing: 0,
     failed: 0,
+    refunded: 0,
+    cancelled: 0,
   };
-  statusStats.forEach(item => {
+  statusStats.forEach((item) => {
     if (transactionStatus[item._id] !== undefined) {
       transactionStatus[item._id] = item.count;
     }
   });
-  
-  const chart = chartData.map(item => ({
-    label: item._id, 
-    revenue: item.revenue
-  }));
-
   res.status(200).json({
     status: "success",
     meta: {
       mode: mode,
-      filterStartDate: start,
-      filterEndDate: end,
-      chartUnit: unit
+      filterDate: date || moment().format(mode === "year" ? "YYYY" : "YYYY-MM"),
+      description:
+        mode === "year"
+          ? `Báo cáo năm ${startMoment.format("YYYY")}`
+          : `Báo cáo tháng ${startMoment.format("MM/YYYY")}`,
     },
     data: {
       stats,
       transactionStatus,
-      chart
-    }
+      chart,
+    },
   });
 });
