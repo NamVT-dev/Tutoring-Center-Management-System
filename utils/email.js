@@ -95,4 +95,8 @@ module.exports = class Email {
       "Tài khoản giáo viên TutorCenter đã được tạo!"
     );
   }
+
+  async sendAbsent() {
+    await this.send("absentNotification", "Thông báo vắng mặt buổi học!");
+  }
 };
