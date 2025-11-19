@@ -50,6 +50,7 @@ app.use(xss());
 app.use(compression());
 
 app.post(
+  "/test-results",
   catchAsync(async (req, res, next) => {
     const { studentId, testScore, category } = req.body;
     const student = await Student.findById(studentId).populate("user");
