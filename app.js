@@ -13,6 +13,9 @@ const AppError = require("./utils/appError");
 const globalErrorHandler = require("./controllers/errorController");
 
 const registedRoutes = require("./routes");
+const catchAsync = require("./utils/catchAsync");
+const Student = require("./models/studentModel");
+const Email = require("./utils/email");
 
 //Start app express
 const app = express();
@@ -45,6 +48,31 @@ app.use(mongoSanitize());
 app.use(xss());
 
 app.use(compression());
+
+app.post(
+  "/test-results",
+  catchAsync(async (req, res, next) => {
+    const { studentId, testScore, category } = req.body;
+    const student = await Student.findById(studentId).populate("user");
+    if (!student) return next(new AppError("Không tìm thấy học viên", 404));
+    student.testScore = testScore;
+    student.testResultAt = Date.now();
+    student.save({ validateBeforeSave: false });
+    try {
+      await new Email(student.user, {
+        studentName: student.name,
+        category,
+        score: testScore,
+      }).sendTestResult();
+    } catch (error) {
+      console.log("Lỗi khi gửi mail", error.message);
+    }
+    res.status(200).json({
+      status: "success",
+      message: "Cập nhật điểm thành công!",
+    });
+  })
+);
 
 app.use(registedRoutes);
 
