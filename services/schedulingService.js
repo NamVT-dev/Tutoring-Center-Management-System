@@ -17,6 +17,7 @@ const {
   buildScheduleSignature,
   buildClassCode,
 } = require("../utils/scheduleHelper");
+const { checkIsHoliday } = require("../utils/holidayHelper");
 
 class SchedulerContext {
   constructor(jobId, io) {
@@ -454,65 +455,66 @@ async function finalizeSchedule(jobId) {
         if (!course) continue;
 
         const totalSessions = course.session;
-        const slotsPerWeek = newClass.weeklySchedules.length;
-        const numWeeks = Math.ceil(totalSessions / Math.max(1, slotsPerWeek));
+        let sessionsCreatedCount = 0;
+        let weekIndex = 0;
 
-        let baseStartDate = anchor.clone();
-        for (let i = 0; i < numWeeks; i++) {
-          for (const [slotIndex, slot] of newClass.weeklySchedules.entries()) {
-            const linearIndex = i * slotsPerWeek + slotIndex;
-            if (linearIndex >= totalSessions) break;
+        let baseStartDate = moment(newClass.startAt).tz(timezone).startOf('week');
+        while (sessionsCreatedCount < totalSessions) {
+            const sortedSlots = newClass.weeklySchedules.sort((a, b) => a.dayOfWeek - b.dayOfWeek);
 
-            // Ngày đầu tiên khớp dayOfWeek trên/ sau anchor
-            let firstWeekSlotDate = baseStartDate.clone().day(slot.dayOfWeek);
-            if (firstWeekSlotDate.isBefore(baseStartDate)) {
-              firstWeekSlotDate.add(1, "week");
+            for (const slot of sortedSlots) {
+                if (sessionsCreatedCount >= totalSessions) break;
+
+                let slotDate = baseStartDate.clone().add(weekIndex, 'weeks').day(slot.dayOfWeek);
+                if (slotDate.isBefore(baseStartDate, 'day')) {
+                    slotDate.add(1, 'weeks'); 
+                }
+
+                // KIỂM TRA NGÀY LỄ
+                const holidayInfo = checkIsHoliday(slotDate.toDate());
+                if (holidayInfo) {
+                    console.log(`>> SKIP HOLIDAY: ${holidayInfo.name} (${slotDate.format("YYYY-MM-DD")}) cho lớp ${newClass.classCode}`);
+                    continue;
+                }
+
+                const startAt = moment.tz({
+                    year: slotDate.year(),
+                    month: slotDate.month(),
+                    date: slotDate.date(),
+                    hour: 0, minute: 0, second: 0
+                }, timezone).add(slot.startMinute, "minutes").toDate();
+
+                const endAt = moment.tz({
+                    year: slotDate.year(),
+                    month: slotDate.month(),
+                    date: slotDate.date(),
+                    hour: 0, minute: 0, second: 0
+                }, timezone).add(slot.endMinute, "minutes").toDate();
+
+                sessionsToCreate.push({
+                    class: newClass._id,
+                    course: newClass.course,
+                    teacher: slot.teacher,
+                    room: slot.room,
+                    startAt,
+                    endAt,
+                    timezone,
+                    status: "scheduled",
+                    createdByJob: jobId,
+                    sessionNo: sessionsCreatedCount + 1,
+                });
+
+                sessionsCreatedCount++; 
             }
-            const sessionDate = firstWeekSlotDate.clone().add(i, "weeks");
+            weekIndex++;
+            if (weekIndex > 100) break; 
+        }
 
-            const startAt = moment
-              .tz(
-                {
-                  year: sessionDate.year(),
-                  month: sessionDate.month(),
-                  date: sessionDate.date(),
-                  hour: 0,
-                  minute: 0,
-                  second: 0,
-                },
-                timezone
-              )
-              .add(slot.startMinute, "minutes")
-              .toDate();
-
-            const endAt = moment
-              .tz(
-                {
-                  year: sessionDate.year(),
-                  month: sessionDate.month(),
-                  date: sessionDate.date(),
-                  hour: 0,
-                  minute: 0,
-                  second: 0,
-                },
-                timezone
-              )
-              .add(slot.endMinute, "minutes")
-              .toDate();
-
-            sessionsToCreate.push({
-              class: newClass._id,
-              course: newClass.course,
-              teacher: slot.teacher,
-              room: slot.room,
-              startAt,
-              endAt,
-              timezone,
-              status: "scheduled",
-              createdByJob: jobId, // idempotency flag
-              sessionNo: linearIndex + 1,
-            });
-          }
+        if (sessionsToCreate.length > 0) {
+             const classSessions = sessionsToCreate.filter(s => String(s.class) === String(newClass._id));
+             const lastSession = classSessions[classSessions.length - 1];
+             
+             await Class.findByIdAndUpdate(newClass._id, { endAt: lastSession.endAt }, { session: mongoSession });
         }
       }
 
@@ -520,7 +522,6 @@ async function finalizeSchedule(jobId) {
         await Session.insertMany(sessionsToCreate, { session: mongoSession });
       }
 
-      // Cập nhật job → completed
       job.status = "completed";
       job.logs.push({
         stage: "COMPLETED",
