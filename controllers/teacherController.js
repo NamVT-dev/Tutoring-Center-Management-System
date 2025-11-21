@@ -24,7 +24,14 @@ const registerShiftAvailability = catchAsync(async (req, res, next) => {
   if (!cfg) {
     return next(new AppError("trung tâm chưa cấu hình ca hoạt động", 400));
   }
-
+  if (!cfg.isAvailabilityOpen) {
+    return next(
+      new AppError(
+        "Hệ thống đang KHÓA đăng ký lịch rảnh. Vui lòng liên hệ Admin nếu cần thay đổi gấp.",
+        403
+      )
+    );
+  }
   const definedShiftNames = new Set(
     (cfg.shifts || []).map((s) => String(s.name).toUpperCase())
   );
@@ -248,7 +255,7 @@ const getStudentClassDetail = catchAsync(async (req, res, next) => {
   const classId = req.params.id;
   const teacher = req.user;
 
-  const [classInfo , sessions, enrollments] = await Promise.all([
+  const [classInfo, sessions, enrollments] = await Promise.all([
     Class.findById(classId)
       .populate("course", "name level description")
       .populate("preferredTeacher", "profile.fullname")
@@ -262,7 +269,7 @@ const getStudentClassDetail = catchAsync(async (req, res, next) => {
       .populate("teacher", "profile.fullname")
       .sort({ sessionNo: 1, startAt: 1 })
       .lean(),
-    
+
     Enrollment.find({
       class: classId,
       status: "confirmed",
@@ -279,9 +286,9 @@ const getStudentClassDetail = catchAsync(async (req, res, next) => {
   res.status(200).json({
     status: "success",
     data: {
-      classInfo,    
-      sessions,     
-      enrollments,  
+      classInfo,
+      sessions,
+      enrollments,
     },
   });
 });
@@ -290,5 +297,5 @@ module.exports = {
   updateTeacherSkills,
   getMyClasses,
   getMySchedule,
-  getStudentClassDetail
+  getStudentClassDetail,
 };

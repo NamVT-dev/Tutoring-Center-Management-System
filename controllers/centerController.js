@@ -180,8 +180,33 @@ const updateConfig = catchAsync(async (req, res, next) => {
     data: { config: updatedConfig },
   });
 });
+const availabilityRegistration = catchAsync(async (req, res, next) => {
+  const { isOpen } = req.body; 
 
+  if (typeof isOpen !== "boolean") {
+    return next(
+      new AppError("Vui lòng cung cấp trạng thái isOpen (true/false)", 400)
+    );
+  }
+
+  const center = await Center.findOneAndUpdate(
+    { key: "default" },
+    { $set: { isAvailabilityOpen: isOpen } },
+    { new: true, upsert: true } 
+  );
+
+  res.status(200).json({
+    status: "success",
+    message: isOpen
+      ? "Đã MỞ cổng đăng ký lịch rảnh"
+      : "Đã KHÓA cổng đăng ký lịch rảnh",
+    data: {
+      isAvailabilityOpen: center.isAvailabilityOpen,
+    },
+  });
+});
 module.exports = {
   getConfig,
   updateConfig,
+  availabilityRegistration
 };

@@ -49,6 +49,7 @@ route.get("/courses/:id", courseCtrl.getCourse);
 //quan ly center
 route.get("/center/config", centerCtrl.getConfig);
 route.patch("/center/config", centerCtrl.updateConfig);
+route.patch("/center/isOpen",centerCtrl.availabilityRegistration);
 //quan ly category
 route.post("/categories", categoryCtrl.createCategory);
 //quan ly class

@@ -79,6 +79,11 @@ const centerSchema = new mongoose.Schema(
     dayShifts: {
       type: [dayShiftSchema],
     },
+    isAvailabilityOpen: {
+      type: Boolean,
+      default: true,
+      required: true,
+    },
     isScheduling: { type: Boolean, default: false },
   },
   { minimize: false }
