@@ -9,11 +9,17 @@ const factory = require("./handlerFactory");
 const getListTeacher = catchAsync(async (req, res) => {
   const { status, page = 1, limit = 10 } = req.query;
   const filters = { role: "teacher" };
-
+  if (status) {
+    if (status === "active" || status === "true") {
+      filters.active = true;
+    } else if (status === "inactive" || status === "false") {
+      filters.active = false;
+    }
+  }
   const { finalQuery, paginationOptions } = buildPaginatedQuery({
     query: req.query,
     filters,
-    searchFields: ["username", "email", "level"],
+    searchFields: ["profile.fullname", "email", "level"],
     page,
     limit,
     select: "username email active profile level skills",

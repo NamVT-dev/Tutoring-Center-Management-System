@@ -1,5 +1,6 @@
 const Email = require("./email"); 
 const Student = require("../models/studentModel");
+const { Teacher } = require("../models/userModel");
 
 const getContactInfo = async (studentId) => {
   try {
@@ -84,4 +85,39 @@ exports.notifyHoldCanceled = async (studentId, enrollment) => {
     .send("holdCanceled", subject)
     .catch(err => console.error("LỖI GỬI MAIL (Canceled):", err.message));
 
+};
+exports.notifyTeacherAssigned = async (teacherId, classDoc) => {
+  try {
+    const teacher = await Teacher.findById(teacherId);
+    if (!teacher) return;
+
+    const schedules = classDoc.weeklySchedules.map(s => {
+       const startH = Math.floor(s.startMinute / 60).toString().padStart(2, '0');
+       const startM = (s.startMinute % 60).toString().padStart(2, '0');
+       const endH = Math.floor(s.endMinute / 60).toString().padStart(2, '0');
+       const endM = (s.endMinute % 60).toString().padStart(2, '0');
+       
+       const days = ["Chủ Nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
+       
+       return `${days[s.dayOfWeek]} (${startH}:${startM} - ${endH}:${endM})`;
+    });
+
+    const data = {
+      teacherName: teacher.profile.fullname,
+      className: classDoc.name,
+      classCode: classDoc.classCode,
+      startDate: new Date(classDoc.startAt).toLocaleDateString("vi-VN"),
+      endDate: new Date(classDoc.endAt).toLocaleDateString("vi-VN"),
+      schedules: schedules 
+    };
+
+    const subject = `[MỜI GIẢNG DẠY] Lớp ${data.className} - Vui lòng xác nhận`;
+    
+    await new Email(teacher, data).send("classAssigned", subject);
+    
+    // console.log(`>> Đã gửi mail mời dạy cho GV: ${teacher.email}`);
+
+  } catch (err) {
+    console.error(`LỖI GỬI MAIL GV (${teacherId}):`, err.message);
+  }
 };

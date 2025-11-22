@@ -3,7 +3,10 @@ const AppError = require("../utils/appError");
 const Center = require("../models/centerModel");
 const schedulingService = require("../services/schedulingService");
 const ScheduleJob = require("../models/scheduleJobModel");
-
+const mongoose = require("mongoose");
+const { Teacher } = require("../models/userModel");
+const Session = require("../models/sessionModel");
+const Class = require("../models/classModel");
 exports.runScheduler = catchAsync(async (req, res, next) => {
   const center = await Center.findOne({ key: "default" });
   if (!center)
@@ -178,3 +181,61 @@ exports.getSchedulerStatus = catchAsync(async (req, res, next) => {
     .status(200)
     .json({ status: "success", data: { isScheduling: center.isScheduling } });
 });
+exports.deleteScheduleJob = catchAsync(async (req, res, next) => {
+  const jobId = req.params.id;
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const job = await ScheduleJob.findById(jobId).session(session);
+    if (!job) {
+      throw new AppError("Không tìm thấy Job xếp lịch này", 404);
+    }
+    if (job.status === "running") {
+       await Center.findOneAndUpdate({ key: "default" }, { isScheduling: false }, { session });
+    }
+
+    if (job.status === "completed") {
+      console.log(`[Rollback] Đang xóa dữ liệu của Job ${jobId}...`);
+
+      const classesToDelete = await Class.find({ createdByJob: jobId })
+        .select("_id")
+        .session(session);
+      
+      const classIds = classesToDelete.map((c) => c._id);
+
+      if (classIds.length > 0) {
+        await Teacher.updateMany(
+          { class: { $in: classIds } },
+          { $pull: { class: { $in: classIds } } },
+          { session }
+        );
+
+        await Session.deleteMany({ createdByJob: jobId }, { session });
+
+        await Class.deleteMany({ createdByJob: jobId }, { session });
+      }
+    }
+
+    await ScheduleJob.findByIdAndDelete(jobId, { session });
+
+    await Center.findOneAndUpdate(
+        { key: "default" }, 
+        { isScheduling: false }, 
+        { session }
+    );
+
+    await session.commitTransaction();
+
+    res.status(204).json({
+      status: "success",
+      data: null,
+    });
+
+  } catch (error) {
+    await session.abortTransaction();
+    return next(new AppError("Không thể hủy Job: " + error.message, 500));
+  } finally {
+    session.endSession();
+  }
+})

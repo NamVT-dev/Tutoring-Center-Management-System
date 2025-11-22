@@ -8,14 +8,17 @@ const Session = require("../models/sessionModel");
 const Student = require("../models/studentModel");
 const Category = require("../models/categoryModel");
 const ScheduleJob = require("../models/scheduleJobModel");
+const Enrollment = require("../models/enrollmentModel");
 const { Teacher } = require("../models/userModel");
 const mongoose = require("mongoose");
-const { LEVEL_INDEX } = require("../utils/levels");
+const { LEVEL_INDEX, LEVEL_ORDER } = require("../utils/levels");
 const {
   computeClassStartEndExact,
   buildScheduleSignature,
   buildClassCode,
 } = require("../utils/scheduleHelper");
+const { checkIsHoliday } = require("../utils/holidayHelper");
+const { notifyTeacherAssigned } = require("../utils/notification");
 
 class SchedulerContext {
   constructor(jobId, io) {
@@ -395,7 +398,7 @@ async function finalizeSchedule(jobId) {
           maxStudent: first.studentCount,
           minStudent: course.minStudent,
           status: "approved",
-          createdByJob: jobId, // idempotency flag
+          createdByJob: jobId,
           scheduleSignature,
           startAt,
           endAt,
@@ -409,7 +412,7 @@ async function finalizeSchedule(jobId) {
       const teacherClassMap = new Map();
       for (const newClass of createdClasses) {
         const classId = newClass._id;
-        const teacherIdsInClass = new Set(); 
+        const teacherIdsInClass = new Set();
 
         if (newClass.preferredTeacher) {
           teacherIdsInClass.add(newClass.preferredTeacher.toString());
@@ -427,7 +430,7 @@ async function finalizeSchedule(jobId) {
           }
           teacherClassMap.get(teacherId).push(classId);
         }
-      } 
+      }
 
       const teacherUpdateOps = [];
       for (const [teacherId, classIds] of teacherClassMap.entries()) {
@@ -437,11 +440,11 @@ async function finalizeSchedule(jobId) {
             update: { $addToSet: { class: { $each: classIds } } },
           },
         });
-      } 
+      }
 
       if (teacherUpdateOps.length > 0) {
         await Teacher.bulkWrite(teacherUpdateOps, { session: mongoSession });
-      } 
+      }
 
       // Tạo sessions theo tuần kế tiếp
       const today = moment.tz(timezone).startOf("day");
@@ -453,28 +456,43 @@ async function finalizeSchedule(jobId) {
         if (!course) continue;
 
         const totalSessions = course.session;
-        const slotsPerWeek = newClass.weeklySchedules.length;
-        const numWeeks = Math.ceil(totalSessions / Math.max(1, slotsPerWeek));
+        let sessionsCreatedCount = 0;
+        let weekIndex = 0;
 
-        let baseStartDate = anchor.clone();
-        for (let i = 0; i < numWeeks; i++) {
-          for (const [slotIndex, slot] of newClass.weeklySchedules.entries()) {
-            const linearIndex = i * slotsPerWeek + slotIndex;
-            if (linearIndex >= totalSessions) break;
+        let baseStartDate = moment(newClass.startAt)
+          .tz(timezone)
+          .startOf("week");
+        while (sessionsCreatedCount < totalSessions) {
+          const sortedSlots = newClass.weeklySchedules.sort(
+            (a, b) => a.dayOfWeek - b.dayOfWeek
+          );
 
-            // Ngày đầu tiên khớp dayOfWeek trên/ sau anchor
-            let firstWeekSlotDate = baseStartDate.clone().day(slot.dayOfWeek);
-            if (firstWeekSlotDate.isBefore(baseStartDate)) {
-              firstWeekSlotDate.add(1, "week");
+          for (const slot of sortedSlots) {
+            if (sessionsCreatedCount >= totalSessions) break;
+
+            let slotDate = baseStartDate
+              .clone()
+              .add(weekIndex, "weeks")
+              .day(slot.dayOfWeek);
+            if (slotDate.isBefore(baseStartDate, "day")) {
+              slotDate.add(1, "weeks");
             }
-            const sessionDate = firstWeekSlotDate.clone().add(i, "weeks");
+
+            // KIỂM TRA NGÀY LỄ
+            const holidayInfo = checkIsHoliday(slotDate.toDate());
+            if (holidayInfo) {
+              console.log(
+                `>> SKIP HOLIDAY: ${holidayInfo.name} (${slotDate.format("YYYY-MM-DD")}) cho lớp ${newClass.classCode}`
+              );
+              continue;
+            }
 
             const startAt = moment
               .tz(
                 {
-                  year: sessionDate.year(),
-                  month: sessionDate.month(),
-                  date: sessionDate.date(),
+                  year: slotDate.year(),
+                  month: slotDate.month(),
+                  date: slotDate.date(),
                   hour: 0,
                   minute: 0,
                   second: 0,
@@ -487,9 +505,9 @@ async function finalizeSchedule(jobId) {
             const endAt = moment
               .tz(
                 {
-                  year: sessionDate.year(),
-                  month: sessionDate.month(),
-                  date: sessionDate.date(),
+                  year: slotDate.year(),
+                  month: slotDate.month(),
+                  date: slotDate.date(),
                   hour: 0,
                   minute: 0,
                   second: 0,
@@ -508,10 +526,27 @@ async function finalizeSchedule(jobId) {
               endAt,
               timezone,
               status: "scheduled",
-              createdByJob: jobId, // idempotency flag
-              sessionNo: linearIndex + 1,
+              createdByJob: jobId,
+              sessionNo: sessionsCreatedCount + 1,
             });
+
+            sessionsCreatedCount++;
           }
+          weekIndex++;
+          if (weekIndex > 100) break;
+        }
+
+        if (sessionsToCreate.length > 0) {
+          const classSessions = sessionsToCreate.filter(
+            (s) => String(s.class) === String(newClass._id)
+          );
+          const lastSession = classSessions[classSessions.length - 1];
+
+          await Class.findByIdAndUpdate(
+            newClass._id,
+            { endAt: lastSession.endAt },
+            { session: mongoSession }
+          );
         }
       }
 
@@ -519,7 +554,6 @@ async function finalizeSchedule(jobId) {
         await Session.insertMany(sessionsToCreate, { session: mongoSession });
       }
 
-      // Cập nhật job → completed
       job.status = "completed";
       job.logs.push({
         stage: "COMPLETED",
@@ -531,9 +565,27 @@ async function finalizeSchedule(jobId) {
     // Trả về dữ liệu đã populate để hiển thị
     const createdClasses = await Class.find({ createdByJob: jobId })
       .populate("course", "name level")
-      .populate("weeklySchedules.teacher", "profile.fullname")
+      .populate("weeklySchedules.teacher", "profile.fullname email")
+      .populate("preferredTeacher", "profile.fullname email")
       .populate("weeklySchedules.room", "name capacity");
 
+    for (const cls of createdClasses) {
+      const teachersToNotify = new Set();
+
+      if (cls.preferredTeacher && cls.preferredTeacher._id) {
+        teachersToNotify.add(cls.preferredTeacher._id.toString());
+      }
+      if (cls.weeklySchedules) {
+        cls.weeklySchedules.forEach((slot) => {
+          if (slot.teacher && slot.teacher._id) {
+            teachersToNotify.add(slot.teacher._id.toString());
+          }
+        });
+      }
+      for (const teacherId of teachersToNotify) {
+        notifyTeacherAssigned(teacherId, cls);
+      }
+    }
     return {
       createdClasses,
       createdSessionsCount: await Session.countDocuments({
@@ -584,7 +636,90 @@ async function loadResources(ctx) {
     return acc;
   }, {});
 }
+async function findDemandFromNewTesters(
+  ctx,
+  course,
+  intakeStartDate,
+  intakeEndDate
+) {
+  const { _id: courseId, category, inputMinScore, inputMaxScore } = course;
 
+  const matchFilter = {
+    tested: true,
+    enrolled: false,
+    category: category._id,
+    testResultAt: {
+      $gte: new Date(intakeStartDate),
+      $lte: new Date(moment(intakeEndDate).endOf("day")),
+    },
+    testScore: { $gte: inputMinScore, $lte: inputMaxScore },
+  };
+
+  const demandResult = await Student.aggregate([
+    { $match: matchFilter },
+    { $count: "studentCount" },
+  ]);
+  return demandResult.length ? demandResult[0].studentCount : 0;
+}
+
+async function findDemandFromWaitingStudents(ctx, course, intakeStartDate) {
+  const { _id: courseId, category, level } = course;
+  const currentLevelIndex = LEVEL_INDEX[level];
+  if (currentLevelIndex === undefined || currentLevelIndex === 0) {
+    return 0;
+  }
+  const previousLevel = LEVEL_ORDER[currentLevelIndex - 1];
+
+  const previousCourseIds = Object.values(ctx.allCourses)
+    .filter(
+      (c) =>
+        c.level === previousLevel &&
+        String(c.category?._id) === String(category._id)
+    )
+    .map((c) => c._id);
+
+  if (previousCourseIds.length === 0) return 0;
+
+  const endedClasses = await Class.find({
+    course: { $in: previousCourseIds },
+    status: { $ne: "canceled" },
+    endAt: { $lt: new Date(intakeStartDate) },
+  })
+    .select("_id")
+    .lean();
+
+  const endedClassIds = endedClasses.map((c) => c._id);
+  if (endedClassIds.length === 0) return 0;
+
+  const completedEnrollments = await Enrollment.find({
+    class: { $in: endedClassIds },
+    status: "confirmed",
+  })
+    .select("student")
+    .lean();
+  const completedStudentIds = [
+    ...new Set(completedEnrollments.map((e) => e.student)),
+  ];
+  if (completedStudentIds.length === 0) return 0;
+
+  const targetLevelIndex = LEVEL_INDEX[level];
+
+  const waitingStudents = await Student.find({
+    _id: { $in: completedStudentIds },
+    enrolled: false,
+    "learningGoal.targetScore": { $exists: true },
+  }).lean();
+
+  let waitingCount = 0;
+  for (const student of waitingStudents) {
+    const goalTargetIndex = LEVEL_INDEX[student.learningGoal.targetScore];
+    if (goalTargetIndex !== undefined && goalTargetIndex >= targetLevelIndex) {
+      waitingCount++;
+    }
+  }
+
+  return waitingCount;
+}
 async function createVirtualClassList(ctx, { intakeStartDate, intakeEndDate }) {
   const coursesToAnalyze = Object.values(ctx.allCourses);
   const virtualClassList = [];
@@ -604,28 +739,25 @@ async function createVirtualClassList(ctx, { intakeStartDate, intakeEndDate }) {
       name,
     } = course;
 
-    const matchFilter = {
-      tested: true,
-      enrolled: false,
-      category: category._id,
-      testResultAt: {
-        $gte: new Date(intakeStartDate),
-        $lte: new Date(moment(intakeEndDate).endOf("day")),
-      },
-      testScore: { $gte: inputMinScore, $lte: inputMaxScore },
-    };
-
-    const demandResult = await Student.aggregate([
-      { $match: matchFilter },
-      { $count: "studentCount" },
-    ]);
-    const studentCount = demandResult.length ? demandResult[0].studentCount : 0;
+    const newStudentCount = await findDemandFromNewTesters(
+      ctx,
+      course,
+      intakeStartDate,
+      intakeEndDate
+    );
+    const waitingStudentCount = await findDemandFromWaitingStudents(
+      ctx,
+      course,
+      intakeStartDate
+    );
+    const studentCount = newStudentCount + waitingStudentCount;
 
     demandList.push({
       courseName: name,
       targetLevel: level,
       inputRange: `${inputMinScore} - ${inputMaxScore}`,
       foundStudents: studentCount,
+      details: `(New: ${newStudentCount}, Waiting: ${waitingStudentCount})`,
     });
 
     if (studentCount < minStudent) {
@@ -666,7 +798,6 @@ async function createVirtualClassList(ctx, { intakeStartDate, intakeEndDate }) {
 
   return { virtualClassList, pendingList, demandList };
 }
-
 function initializeScheduleState(ctx) {
   ctx.scheduleState = { teachers: {}, rooms: {} };
   const days = ctx.centerConfig.activeDaysOfWeek;
