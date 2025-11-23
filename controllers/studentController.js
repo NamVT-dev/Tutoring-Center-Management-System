@@ -1,16 +1,21 @@
+const mongoose = require("mongoose");
+const moment = require("moment-timezone");
 const Student = require("../models/studentModel");
 const catchAsync = require("../utils/catchAsync");
 const AppError = require("../utils/appError");
 const Course = require("../models/courseModel");
 const Class = require("../models/classModel");
 const Center = require("../models/centerModel");
-const mongoose = require("mongoose");
 const Enrollment = require("../models/enrollmentModel");
 const Session = require("../models/sessionModel");
 const CustomScheduleRequest = require("../models/customScheduleRequestModel");
-const { mapScoreToLevel, getRoadmapLevels,LEVEL_INDEX } = require("../utils/levels");
+const {
+  mapScoreToLevel,
+  getRoadmapLevels,
+  LEVEL_INDEX,
+} = require("../utils/levels");
 const { notifyHoldCreated } = require("../utils/notification");
-const moment = require("moment-timezone");
+const vnpay = require("../config/vnpay");
 
 exports.getAllMyStudent = catchAsync(async (req, res) => {
   const user = await req.user.populate("student");
@@ -272,6 +277,18 @@ exports.createCustomSchedule = catchAsync(async (req, res, next) => {
 
 const HOLD_TTL_MINUTES = 15;
 
+const createPaymentURL = (amount, txnref) => {
+  const paymentUrl = vnpay.buildPaymentUrl({
+    vnp_Amount: amount,
+    vnp_IpAddr: "192.168.1.1",
+    vnp_ReturnUrl: "http://localhost:5173/return",
+    vnp_TxnRef: txnref,
+    vnp_OrderInfo: "Thanh toán đơn hàng",
+  });
+
+  return paymentUrl;
+};
+
 exports.createSeatHold = catchAsync(async (req, res, next) => {
   const { student, classId } = req.body;
 
@@ -308,14 +325,17 @@ exports.createSeatHold = catchAsync(async (req, res, next) => {
     const existingEnrollment = await Enrollment.findOne({
       student: student,
       class: classId,
-      status: { $in: ["hold", "confirmed"] }
+      status: { $in: ["hold", "confirmed"] },
     }).session(session);
 
     if (existingEnrollment) {
-      if (existingEnrollment.status === 'hold') {
-         throw new AppError("Bạn đang giữ chỗ lớp này. Vui lòng kiểm tra lại.", 409);
+      if (existingEnrollment.status === "hold") {
+        throw new AppError(
+          "Bạn đang giữ chỗ lớp này. Vui lòng kiểm tra lại.",
+          409
+        );
       } else {
-         throw new AppError("Bạn đã đăng ký hoặc đang giữ chỗ lớp này", 409); // 409 Conflict
+        throw new AppError("Bạn đã đăng ký hoặc đang giữ chỗ lớp này", 409); // 409 Conflict
       }
     }
     // 4. TĂNG reservedCount của lớp
@@ -342,10 +362,11 @@ exports.createSeatHold = catchAsync(async (req, res, next) => {
     // 6. Commit transaction
     await session.commitTransaction();
 
+    const checkoutUrl = createPaymentURL(course.price, newEnrollment.id);
+
     // 7. Tạo thông tin thanh toán trả về
     const paymentInfo = {
-      checkoutUrl: `https://payment.gateway.com/pay?enrollmentId=${newEnrollment._id}`,
-      qrPayload: "EXAMPLE_QR_PAYLOAD_FOR_ENROLLMENT_" + newEnrollment._id,
+      checkoutUrl,
     };
 
     notifyHoldCreated(student, newEnrollment);
@@ -355,7 +376,7 @@ exports.createSeatHold = catchAsync(async (req, res, next) => {
       message: "Giữ chỗ thành công",
       data: {
         enrollment: newEnrollment,
-        paymentInfo: paymentInfo,
+        paymentInfo,
       },
     });
   } catch (error) {
@@ -373,10 +394,8 @@ exports.getMyEnrolledClasses = catchAsync(async (req, res, next) => {
   const studentId = req.params.id;
   const userId = req.user.id;
 
-  const isOwner = req.user.student.some(
-    (s) => s._id.toString() === studentId
-  );
-  if(!isOwner){
+  const isOwner = req.user.student.some((s) => s._id.toString() === studentId);
+  if (!isOwner) {
     return next(
       new AppError("Bạn không có quyền xem danh sách lớp của học viên này", 403)
     );
@@ -388,14 +407,14 @@ exports.getMyEnrolledClasses = catchAsync(async (req, res, next) => {
   })
     .populate({
       path: "class",
-      select: "name classCode startAt endAt preferredTeacher status", 
+      select: "name classCode startAt endAt preferredTeacher status",
       populate: {
-        path: "preferredTeacher", 
+        path: "preferredTeacher",
         select: "profile.fullname",
       },
     })
     .sort({ createdAt: -1 });
-    
+
   const classes = enrollments.map((enr) => enr.class);
 
   res.status(200).json({
@@ -411,9 +430,7 @@ exports.getStudentClassDetail = catchAsync(async (req, res, next) => {
   const { id: studentId, classId } = req.params;
   const userId = req.user.id;
 
-  const isOwner = req.user.student.some(
-    (s) => s._id.toString() === studentId
-  );
+  const isOwner = req.user.student.some((s) => s._id.toString() === studentId);
   if (!isOwner) {
     return next(
       new AppError("Bạn không có quyền xem thông tin của học viên này", 403)
@@ -458,7 +475,7 @@ exports.getStudentClassDetail = catchAsync(async (req, res, next) => {
       .select("student")
       .populate({
         path: "student",
-        select: "name", 
+        select: "name",
       })
       .lean(),
   ]);
@@ -470,9 +487,9 @@ exports.getStudentClassDetail = catchAsync(async (req, res, next) => {
   res.status(200).json({
     status: "success",
     data: {
-      classInfo,    
-      sessions,    
-      enrollments,  
+      classInfo,
+      sessions,
+      enrollments,
     },
   });
 });
@@ -482,9 +499,7 @@ exports.getMySchedule = catchAsync(async (req, res, next) => {
   const userId = req.user.id;
   const timezone = "Asia/Ho_Chi_Minh";
 
-  const isOwner = req.user.student.some(
-    (s) => s._id.toString() === studentId
-  );
+  const isOwner = req.user.student.some((s) => s._id.toString() === studentId);
   if (!isOwner) {
     return next(
       new AppError("Bạn không có quyền xem lịch học của học viên này", 403)
@@ -507,12 +522,11 @@ exports.getMySchedule = catchAsync(async (req, res, next) => {
     student: studentId,
     status: "confirmed",
   })
-    .select("class") 
+    .select("class")
     .lean();
 
   const classIds = enrollments.map((enr) => enr.class);
 
-  
   const sessions = await Session.find({
     class: { $in: classIds },
     status: { $in: ["scheduled", "published"] },

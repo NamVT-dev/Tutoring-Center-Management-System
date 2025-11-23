@@ -94,7 +94,7 @@ const cronJob = () => {
           if (att.status === "absent") return att.student.id;
           return null;
         })
-        .filter((std) => std !== null);
+        .filter((std) => !!std);
       await Promise.all(
         absentStudents.map((s) => sendEmailToAbsentStudent(s, session))
       );

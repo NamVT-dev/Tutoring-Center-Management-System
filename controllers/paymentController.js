@@ -7,6 +7,7 @@ const Class = require("../models/classModel");
 const Student = require("../models/studentModel");
 const factory = require("./handlerFactory");
 const { notifyPaymentConfirmed } = require("../utils/notification");
+const vnpay = require("../config/vnpay");
 
 exports.getMyPayments = catchAsync(async (req, res) => {
   const payments = await Payment.find({
@@ -21,7 +22,7 @@ exports.getMyPayments = catchAsync(async (req, res) => {
 
 exports.getOneByMember = catchAsync(async (req, res, next) => {
   const payment = await Payment.findById(req.params.id);
-  if (!payment || !payment.userId === req.user.id)
+  if (!payment || payment.user !== req.user.id)
     return next(new AppError("Không tìm thấy thanh toán", 404));
   res.status(200).json({
     status: "success",
@@ -30,13 +31,13 @@ exports.getOneByMember = catchAsync(async (req, res, next) => {
 });
 
 exports.handlePaymentWebhook = catchAsync(async (req, res, next) => {
-  const event = req.body;
+  const verify = vnpay.verifyReturnUrl(req.query);
 
-  if (event.event !== "payment.succeeded") {
-    return res.status(200).json({ message: "Ignoring non-succeeded event" });
+  if (!verify.isSuccess) {
+    return next(new AppError("Thanh toán thất bại", 400));
   }
 
-  const { enrollmentId, invoiceId, paidAt } = event;
+  const { vnp_TxnRef: enrollmentId, vnp_TransactionNo: invoiceId } = req.query;
 
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -74,7 +75,7 @@ exports.handlePaymentWebhook = catchAsync(async (req, res, next) => {
 
       // Đổi trạng thái Enrollment
       enrollment.status = "confirmed";
-      enrollment.paidAt = paidAt || new Date();
+      enrollment.paidAt = new Date();
       enrollment.invoiceId = invoiceId;
       enrollment.holdExpiresAt = undefined;
 
@@ -88,13 +89,12 @@ exports.handlePaymentWebhook = catchAsync(async (req, res, next) => {
       await Payment.create(
         [
           {
-            user: studentToUpdate.user, 
+            user: studentToUpdate.user,
             amount: enrollment.amount,
-            providerPaymentId: enrollment.invoiceId, 
+            providerPaymentId: enrollment.invoiceId,
             status: "succeeded",
             description: `Thanh toán lớp ${classToUpdate.name} (HV: ${studentToUpdate.name})`,
-            invoiceId: enrollment._id.toString(), 
-            createdAt: enrollment.paidAt, 
+            invoiceId: enrollment._id.toString(),
           },
         ],
         { session: session }
@@ -109,9 +109,10 @@ exports.handlePaymentWebhook = catchAsync(async (req, res, next) => {
 
       notifyPaymentConfirmed(enrollment.student, enrollment);
 
-      return res
-        .status(200)
-        .json({ message: "Enrollment confirmed successfully" });
+      return res.status(200).json({
+        status: "success",
+        message: "Thanh toán thành công",
+      });
     }
 
     // B. Xử lý trường hợp 'hold' ĐÃ HẾT HẠN
@@ -124,20 +125,18 @@ exports.handlePaymentWebhook = catchAsync(async (req, res, next) => {
       );
       // (Thực hiện logic hoàn tiền hoặc báo admin ở đây)
       await session.commitTransaction(); // Commit để ghi nhận log
-      return res
-        .status(200)
-        .json({ message: "Late payment processed, need review" });
+      return res.status(200).json({ message: "Thanh toán trễ, cần xử lý lại" });
     }
 
     // C. Trường hợp đã 'confirmed' (webhook gọi lại)
     if (enrollment.status === "confirmed") {
       await session.abortTransaction(); // Không cần làm gì
-      return res.status(200).json({ message: "Webhook already processed" });
+      return res.status(200).json({ message: "Thanh toán đã được xử lý" });
     }
 
     // Bất kỳ trường hợp nào khác
     throw new AppError(
-      `Webhook Error: Trạng thái enrollment không hợp lệ (${enrollment.status})`,
+      `Trạng thái enrollment không hợp lệ (${enrollment.status})`,
       400
     );
   } catch (error) {

@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { buildClassCode } = require("../utils/scheduleHelper");
 
 const weeklySlotSchema = new mongoose.Schema(
   {
@@ -91,6 +92,11 @@ classSchema.virtual("currentSize").get(function () {
   const confirmed = this.student ? this.student.length : 0;
   const reserved = this.reservedCount || 0;
   return confirmed + reserved;
+});
+
+classSchema.pre("save", function (next) {
+  if (!this.classCode) this.classCode = buildClassCode();
+  next();
 });
 const Class = mongoose.model("Class", classSchema, "classes");
 
