@@ -387,7 +387,7 @@ async function finalizeSchedule(jobId) {
           totalSessions: course.session,
           anchorDate: anchor,
         });
-        const classCode = await buildClassCode(course);
+        const classCode = buildClassCode(course);
 
         classesToCreate.push({
           name: `${first.courseName} | ${weeklySchedules.length}b/tuần`,
