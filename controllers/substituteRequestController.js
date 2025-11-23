@@ -35,7 +35,7 @@ exports.createSubstituteRequest = catchAsync(async (req, res, next) => {
   }
   const existingRequest = await ScheduleChangeRequest.findOne({
     session: sessionId,
-    status: { $in: ["pending_teacher", "pending_admin","approved"] },
+    status: { $in: ["pending_teacher", "pending_admin", "approved"] },
   });
 
   if (existingRequest) {
@@ -402,5 +402,37 @@ exports.cancelRequest = catchAsync(async (req, res, next) => {
     status: "success",
     message: "Đã hủy yêu cầu thành công",
     data: { request },
+  });
+});
+exports.getAllRequests = catchAsync(async (req, res, next) => {
+  const filter = {};
+
+  if (req.query.status) {
+    filter.status = req.query.status;
+  }
+
+  if (req.query.teacherId) {
+    filter.teacher = req.query.teacherId;
+  }
+
+  const requests = await ScheduleChangeRequest.find(filter)
+    .populate("teacher", "profile.fullname email")
+    .populate("newTeacher", "profile.fullname email")
+    .populate({
+      path: "session",
+      select: "startAt endAt class room",
+      populate: [
+        { path: "class", select: "name classCode" },
+        { path: "room", select: "name" },
+      ],
+    })
+    .sort({ createdAt: -1 });
+
+  res.status(200).json({
+    status: "success",
+    results: requests.length,
+    data: {
+      requests,
+    },
   });
 });
