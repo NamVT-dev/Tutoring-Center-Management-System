@@ -12,6 +12,7 @@ const Class = require("../models/classModel");
 const { notifyHoldCanceled } = require("../utils/notification");
 const Attendance = require("../models/attendanceModel");
 const Session = require("../models/sessionModel");
+const autoProcessRequestsJob = require("./requestCleanup");
 
 const csvFilePath = path.join(__dirname, "..", "public", "results.csv");
 
@@ -213,4 +214,5 @@ const autoCancelHoldJob = () => {
 module.exports = () => {
   cronJob();
   autoCancelHoldJob();
+  autoProcessRequestsJob();
 };

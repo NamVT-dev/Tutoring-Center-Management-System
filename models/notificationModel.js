@@ -10,7 +10,7 @@ const notificationSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: "User",
   },
-  recipientGroup: { type: String, enum: ["member", "staff"] }, //hoặc recipientId hoặc recipientGroup
+  recipientGroup: { type: String, enum: ["member", "staff", "teacher"] }, //hoặc recipientId hoặc recipientGroup
 
   // loại + priority
   type: {
@@ -24,6 +24,10 @@ const notificationSchema = new Schema({
   isRead: { type: Boolean, default: false },
   readAt: { type: Date },
 
+  data: {
+    linkId: mongoose.Schema.Types.ObjectId,
+    linkModel: { type: String, default: "SubstituteRequest" },
+  },
   // scheduling / timestamps
   scheduledAt: { type: Date, default: null }, //optional
   sentAt: { type: Date },

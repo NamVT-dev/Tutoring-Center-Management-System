@@ -51,10 +51,16 @@ const io = new Server(server, {
 app.set("socketio", io);
 
 io.on("connection", (socket) => {
-  console.log("người dùng đã kết nối:", socket.id);
+  socket.on("join", (userData) => {
+    if (!userData) return;
+    
+    const userId = userData._id || userData; 
+    console.log(`User ${userId} joined room.`);
+    socket.join(userId.toString());
 
-  socket.on("disconnect", () => {
-    console.log("Người dùng ngắt kết nối:", socket.id);
+    if (userData.role === 'admin' || userData.role === 'staff') {
+        socket.join('staff');
+    }
   });
 });
 const port = process.env.PORT || 9999;

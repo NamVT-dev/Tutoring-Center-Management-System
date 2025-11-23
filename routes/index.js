@@ -10,6 +10,7 @@ const scheduleRoutes = require("./scheduleRoutes");
 const attendanceRoutes = require("./attendanceRoutes");
 const notificationRoutes = require("./notificationRoutes");
 const paymentRoutes = require("./paymentRoutes");
+const substituteRoutes = require("./substituteRequestRoute");
 const route = express.Router();
 
 route.use("/auth", authRoutes);
@@ -22,6 +23,7 @@ route.use("/schedule", scheduleRoutes);
 route.use("/attendance", attendanceRoutes);
 route.use("/notification", notificationRoutes);
 route.use("/payment", paymentRoutes);
+route.use("/substitute",substituteRoutes)
 route.use("/", memberRoutes);
 
 module.exports = route;
