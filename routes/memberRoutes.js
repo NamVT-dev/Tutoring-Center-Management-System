@@ -2,6 +2,7 @@ const express = require("express");
 const courseCtrl = require("../controllers/courseController");
 const authCtrl = require("../controllers/authController");
 const studentCtrl = require("../controllers/studentController");
+const teacherCtrl = require("../controllers/teacherController");
 const route = express.Router();
 
 route.get("/courses", courseCtrl.listCourses);
@@ -22,7 +23,10 @@ route.get("/:id/roadmap", studentCtrl.getRoadmap);
 route.post("/custom-schedule", studentCtrl.createCustomSchedule);
 route.post("/enrollment", studentCtrl.createSeatHold);
 
-route.get("/:id/classes",studentCtrl.getMyEnrolledClasses);
-route.get("/:id/classes/:classId",studentCtrl.getStudentClassDetail);
-route.get("/:id/schedule",studentCtrl.getMySchedule);
+route.get("/:id/classes", studentCtrl.getMyEnrolledClasses);
+route.get("/:id/classes/:classId", studentCtrl.getStudentClassDetail);
+route.get("/:id/schedule", studentCtrl.getMySchedule);
+
+route.get("/teacher-profile/:id", teacherCtrl.getOneTeacher);
+
 module.exports = route;

@@ -51,9 +51,9 @@ exports.createOne = (Model) =>
     });
   });
 
-exports.getOne = (Model, popOptions) =>
+exports.getOne = (Model, popOptions, select) =>
   catchAsync(async (req, res, next) => {
-    let query = Model.findById(req.params.id);
+    let query = Model.findById(req.params.id).select(select);
     if (popOptions) query = query.populate(popOptions);
     const doc = await query;
 

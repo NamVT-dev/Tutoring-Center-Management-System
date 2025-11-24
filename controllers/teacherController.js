@@ -9,6 +9,7 @@ const moment = require("moment-timezone");
 const mongoose = require("mongoose");
 const Class = require("../models/classModel");
 const Enrollment = require("../models/enrollmentModel");
+const factory = require("./handlerFactory");
 
 const isDay = (n) => Number.isInteger(n) && n >= 0 && n <= 6;
 
@@ -292,10 +293,18 @@ const getStudentClassDetail = catchAsync(async (req, res, next) => {
     },
   });
 });
+
+const getOneTeacher = factory.getOne(
+  Teacher,
+  "class",
+  "-availability -updatedAt -passwordChangedAt -__v"
+);
+
 module.exports = {
   registerShiftAvailability,
   updateTeacherSkills,
   getMyClasses,
   getMySchedule,
   getStudentClassDetail,
+  getOneTeacher,
 };
