@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 const complainSchema = new mongoose.Schema(
   {
-    student: {
+    user: {
       type: mongoose.Schema.ObjectId,
       ref: "User",
     },
@@ -11,10 +11,10 @@ const complainSchema = new mongoose.Schema(
       type: String,
       enum: [
         "Pending",
-        "Received", 
-        "In_Progress", 
-        "Resolved", 
-        "Closed", 
+        "Received",
+        "In_Progress",
+        "Resolved",
+        "Closed",
         "Rejected",
       ],
       default: "Pending",
@@ -23,6 +23,10 @@ const complainSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+complainSchema.pre(/^find/, function (next) {
+  this.populate("user");
+  next();
+});
 const Complain = mongoose.model("Complain", complainSchema, "complains");
 
 module.exports = Complain;
