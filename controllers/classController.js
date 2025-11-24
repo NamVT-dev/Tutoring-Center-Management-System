@@ -13,6 +13,8 @@ const {
   previewChangeTeacher,
   applyChangeTeacher,
 } = require("../services/classChangeService");
+const Student = require("../models/studentModel");
+const Attendance = require("../models/attendanceModel");
 
 function findShiftByName(centerConfig, shiftName) {
   return (centerConfig?.shifts || []).find((s) => s.name === shiftName) || null;
@@ -302,7 +304,7 @@ exports.cancelClass = catchAsync(async (req, res, next) => {
     });
   } catch (error) {
     await session.abortTransaction();
-    next(error); 
+    next(error);
   } finally {
     session.endSession();
   }
@@ -312,3 +314,40 @@ exports.updateClass = factory.updateOne(Class);
 exports.deleteClass = factory.deleteOne(Class);
 
 exports.createManySession = factory.createMany(Session);
+
+exports.addStudent = catchAsync(async (req, res, next) => {
+  const addClass = await Class.findById(req.params.id);
+  if (!addClass) return next(new AppError("Không tìm thấy lớp học", 404));
+  const student = await Student.findById(req.body.studentId);
+  if (!student) return next(new AppError("Không tìm thấy học viên", 404));
+  if (addClass.student.includes(req.body.studentId))
+    return next(new AppError("Lớp đã tồn tại học viên đó", 400));
+  if (addClass.student.lenth >= addClass.maxStudent)
+    return next(new AppError("Lớp học đã đạt số lượng tối đa", 400));
+  addClass.student.push(req.body.studentId);
+  addClass.save();
+
+  const attendances = await Attendance.find()
+    .populate({
+      path: "session",
+      match: { class: req.params.id },
+    })
+    .exec();
+
+  const filtered = attendances.filter((a) => !!a.session);
+  filtered.forEach((a) => {
+    a.attendance.push({
+      student: req.body.studentId,
+      status: "absent",
+      note: "đăng kí muộn",
+    });
+    a.save();
+  });
+
+  res.status(200).json({
+    status: "success",
+    data: {
+      class: addClass,
+    },
+  });
+});

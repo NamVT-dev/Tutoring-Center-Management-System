@@ -28,6 +28,7 @@ route.get("/transaction/:id", paymentController.getOne);
 route.post("/class", classController.createClass);
 route.post("/class/session", classController.createManySession);
 route.patch("/class/:id", classController.updateClass);
+route.patch("/class/:id/add-student", classController.addStudent);
 route.delete("/class/:id", classController.deleteClass);
 
 //test-score
@@ -37,11 +38,10 @@ route.get("/export-score", testController.exportScore);
 route.patch("/teacher/:id/skills", teacherController.updateTeacherSkills);
 
 //custom-request
-route.get("/custom-requests/summary",customController.getCustomRequestSummary);
-route.get("/custom-requests",customController.getAllCustomRequests);
-route.get("/custom-requests/:id",customController.getOneCustomRequest);
-route.patch("/custom-requests/:id",customController.updateCustomRequest);
-route.delete("/custom-requests/:id",customController.deleteOneCustomRequest);
-
+route.get("/custom-requests/summary", customController.getCustomRequestSummary);
+route.get("/custom-requests", customController.getAllCustomRequests);
+route.get("/custom-requests/:id", customController.getOneCustomRequest);
+route.patch("/custom-requests/:id", customController.updateCustomRequest);
+route.delete("/custom-requests/:id", customController.deleteOneCustomRequest);
 
 module.exports = route;
