@@ -7,6 +7,8 @@ const route = express.Router();
 
 route.get("/courses", courseCtrl.listCourses);
 route.get("/courses/:id", courseCtrl.getCourse);
+route.get("/highlight-teacher", teacherCtrl.getHighlightTeacher);
+route.get("/teacher-profile/:id", teacherCtrl.getOneTeacher);
 
 route.use(authCtrl.protect, authCtrl.restrictTo("member"));
 route.get("/learner", studentCtrl.getAllMyStudent);
@@ -26,7 +28,5 @@ route.post("/enrollment", studentCtrl.createSeatHold);
 route.get("/:id/classes", studentCtrl.getMyEnrolledClasses);
 route.get("/:id/classes/:classId", studentCtrl.getStudentClassDetail);
 route.get("/:id/schedule", studentCtrl.getMySchedule);
-
-route.get("/teacher-profile/:id", teacherCtrl.getOneTeacher);
 
 module.exports = route;

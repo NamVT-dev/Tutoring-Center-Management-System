@@ -300,6 +300,42 @@ const getOneTeacher = factory.getOne(
   "-availability -updatedAt -passwordChangedAt -__v"
 );
 
+const getHighlightTeacher = catchAsync(async (req, res) => {
+  const teachers = await Teacher.aggregate([
+    {
+      $addFields: {
+        highestSkillLevel: {
+          $max: {
+            $map: {
+              input: "$skills",
+              as: "s",
+              in: { $max: "$$s.levels" },
+            },
+          },
+        },
+      },
+    },
+    {
+      $addFields: {
+        levelIndex: {
+          $indexOfArray: [LEVEL_ORDER, "$highestSkillLevel"],
+        },
+      },
+    },
+    { $sort: { levelIndex: -1 } },
+    { $limit: 4 },
+    {
+      $project: {
+        profile: 1,
+        skills: 1,
+        highestSkillLevel: 1,
+      },
+    },
+  ]);
+
+  res.status(200).json({ results: teachers.length, data: teachers });
+});
+
 module.exports = {
   registerShiftAvailability,
   updateTeacherSkills,
@@ -307,4 +343,5 @@ module.exports = {
   getMySchedule,
   getStudentClassDetail,
   getOneTeacher,
+  getHighlightTeacher,
 };
