@@ -302,6 +302,7 @@ const getOneTeacher = factory.getOne(
 
 const getHighlightTeacher = catchAsync(async (req, res) => {
   const teachers = await Teacher.aggregate([
+    // 1. Tính highest skill level
     {
       $addFields: {
         highestSkillLevel: {
@@ -315,6 +316,8 @@ const getHighlightTeacher = catchAsync(async (req, res) => {
         },
       },
     },
+
+    // 2. Convert to level index
     {
       $addFields: {
         levelIndex: {
@@ -322,8 +325,53 @@ const getHighlightTeacher = catchAsync(async (req, res) => {
         },
       },
     },
+
+    // 3. Sort & limit
     { $sort: { levelIndex: -1 } },
     { $limit: 4 },
+
+    // 4. Lookup Category (populate skills.category)
+    {
+      $lookup: {
+        from: "categories",
+        localField: "skills.category",
+        foreignField: "_id",
+        as: "skillCategories",
+      },
+    },
+
+    // 5. Gộp category vào từng skills tương ứng
+    {
+      $addFields: {
+        skills: {
+          $map: {
+            input: "$skills",
+            as: "s",
+            in: {
+              $mergeObjects: [
+                "$$s",
+                {
+                  category: {
+                    $arrayElemAt: [
+                      {
+                        $filter: {
+                          input: "$skillCategories",
+                          as: "cat",
+                          cond: { $eq: ["$$cat._id", "$$s.category"] },
+                        },
+                      },
+                      0,
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        },
+      },
+    },
+
+    // 6. Chỉ trả về trường cần thiết
     {
       $project: {
         profile: 1,
