@@ -104,7 +104,8 @@ exports.listClasses = catchAsync(async (req, res, next) => {
   if (!include)
     (includeSet.add("teacher"),
       includeSet.add("room"),
-      includeSet.add("course"));
+      includeSet.add("course"),
+      includeSet.add("preferredTeacher"));
   if (includeSet.has("course"))
     populate.push({ path: "course", select: "name level category" });
   if (includeSet.has("teacher"))
@@ -114,7 +115,9 @@ exports.listClasses = catchAsync(async (req, res, next) => {
     });
   if (includeSet.has("room"))
     populate.push({ path: "weeklySchedules.room", select: "name capacity" });
-
+  if (includeSet.has("preferredTeacher")) {
+    populate.push({ path: "preferredTeacher", select: "profile.fullname" });
+  }
   const [total, classes] = await Promise.all([
     Class.countDocuments(finalQuery),
     Class.find(finalQuery)
