@@ -30,7 +30,7 @@ exports.getOneStudent = catchAsync(async (req, res, next) => {
   if (!req.user.student.includes(studentId))
     return next(new AppError("Không tìm thấy học viên", 404));
 
-  const student = await Student.findById(studentId);
+  const student = await Student.findById(studentId).populate("class", "name");
   if (!student) return next(new AppError("Không tìm thấy học viên", 404));
   res.status(200).json({
     status: "success",
