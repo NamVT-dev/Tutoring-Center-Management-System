@@ -18,6 +18,10 @@ exports.registerTest = catchAsync(async (req, res, next) => {
   const category = await Category.findById(categoryId);
   if (!category) return next(new AppError("Không tìm thấy category", 400));
 
+  const user = await Member.findById(req.user.id);
+  if (user.student.length >= 3)
+    return next(new AppError("Tài khoản đã tạo tối đa học viên", 404));
+
   const student = await Student.create({
     user: req.user.id,
     name,
@@ -27,7 +31,6 @@ exports.registerTest = catchAsync(async (req, res, next) => {
     tested: false,
   });
 
-  const user = await Member.findById(req.user.id);
   user.student.push(student.id);
 
   user.save({ validateBeforeSave: false });

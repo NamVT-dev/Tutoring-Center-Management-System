@@ -76,3 +76,45 @@ exports.getAllAttendanceReport = catchAsync(async (req, res) => {
     data: filtered,
   });
 });
+
+exports.getWeeklyAttendance = catchAsync(async (req, res, next) => {
+  const { from, to, studentId } = req.query;
+
+  if (!req.user.student.includes(studentId))
+    return next(new AppError("Dữ liệu không phù hợp", 400));
+
+  const startDate = new Date(from);
+  const endDate = new Date(to);
+
+  const sessions = await Session.find({
+    startAt: {
+      $gte: startDate,
+      $lte: endDate,
+    },
+  }).sort({ startTime: 1 });
+
+  let studentAttendances = [];
+
+  await Promise.all(
+    sessions.map(async (s) => {
+      const attendance = await Attendance.findOne(
+        {
+          session: s,
+          attendance: { $elemMatch: { student: studentId } },
+        },
+        {
+          "attendance.$": 1,
+          session: 1,
+          status: 1,
+        }
+      );
+      if (!attendance) return;
+      studentAttendances.push(attendance);
+    })
+  );
+
+  res.status(200).json({
+    status: "success",
+    data: studentAttendances,
+  });
+});
