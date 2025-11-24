@@ -1,26 +1,8 @@
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
-const fs = require("fs");
-const path = require("path");
 
 const http = require("http");
 const { Server } = require("socket.io");
-
-const csvFilePath = path.join("public", "results.csv");
-
-if (!fs.existsSync(csvFilePath)) {
-  fs.writeFileSync(
-    csvFilePath,
-    "studentId,name,dob,category,testId,score,status\n"
-  );
-}
-
-if (fs.existsSync(csvFilePath)) {
-  const data = fs.readFileSync(csvFilePath, "utf8");
-  if (!data.endsWith("\n")) {
-    fs.appendFileSync(csvFilePath, "\n");
-  }
-}
 
 process.on("uncaughtException", (err) => {
   console.log("UNCAUGHT EXCEPTION! 💥 Shutting down...");
@@ -34,7 +16,7 @@ const cronJob = require("./utils/cronTask");
 
 const DB = process.env.DATABASE;
 mongoose.connect(DB).then(() => {
-  console.log("DB connection successful!")
+  console.log("DB connection successful!");
   cronJob();
 });
 
@@ -53,13 +35,13 @@ app.set("socketio", io);
 io.on("connection", (socket) => {
   socket.on("join", (userData) => {
     if (!userData) return;
-    
-    const userId = userData._id || userData; 
+
+    const userId = userData._id || userData;
     console.log(`User ${userId} joined room.`);
     socket.join(userId.toString());
 
-    if (userData.role === 'admin' || userData.role === 'staff') {
-        socket.join('staff');
+    if (userData.role === "admin" || userData.role === "staff") {
+      socket.join("staff");
     }
   });
 });

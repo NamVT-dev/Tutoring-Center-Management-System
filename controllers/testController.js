@@ -20,7 +20,7 @@ exports.registerTest = catchAsync(async (req, res, next) => {
 
   const user = await Member.findById(req.user.id);
   if (user.student.length >= 3)
-    return next(new AppError("Tài khoản đã tạo tối đa học viên", 404));
+    return next(new AppError("Tài khoản đã tạo tối đa học viên", 400));
 
   const student = await Student.create({
     user: req.user.id,
@@ -34,43 +34,18 @@ exports.registerTest = catchAsync(async (req, res, next) => {
   user.student.push(student.id);
 
   user.save({ validateBeforeSave: false });
-
-  const csvWriter = createCsvWriter({
-    path: csvFilePath,
-    header: [
-      { id: "studentId", title: "studentId" },
-      { id: "name", title: "name" },
-      { id: "dob", title: "dob" },
-      { id: "category", title: "category" },
-      { id: "testId", title: "testId" },
-      { id: "score", title: "score" },
-      { id: "status", title: "status" },
-    ],
-    append: true,
-  });
-
-  const testId = `${category.name}-${Date.now()}`;
-
-  await csvWriter.writeRecords([
-    {
-      studentId: student.id,
-      name,
-      dob,
-      category: category.name,
-      testId,
-      score: "",
-      status: "registered",
-    },
-  ]);
-
   try {
     await new Email(req.user, {
+      studentId: student.id,
       categoryName: category.name,
-      testId,
       dob,
+      linkTest:
+        "https://docs.google.com/forms/d/e/1FAIpQLSeCyUtrGQUM6C6Y18wGqnrDR85fWmDl93RoDyBHJ9vw9beLxQ/viewform?usp=pp_url&entry.778611321=" +
+        student.id,
     }).sendTestRegisterSuccess();
     /*eslint-disable-next-line*/
   } catch (error) {
+    console.log(error);
     return next(new AppError("Có lỗi khi gửi email. Hãy thử lại sau!"), 500);
   }
 

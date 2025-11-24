@@ -5,7 +5,7 @@ block content
   p Chúc mừng bạn đã đăng ký thi thử #{categoryName} thành công trên hệ thống TutorCenter! 🎉
   p Dưới đây là thông tin bài thi của bạn:
   ul
-    li 🧾 Mã bài thi: #{testId}
+    li 🧾 Mã bài thi: #{studentId}
     li 📅 Ngày sinh: #{dob}
     li 📚 Danh mục: #{categoryName}
   p Bạn có thể bắt đầu làm bài thi bằng cách nhấn vào nút bên dưới:
@@ -17,8 +17,8 @@ block content
             tbody
               tr
                 td
-                  a(href="#", target='_blank') Bắt đầu làm bài thi
-  p ⏰ Lưu ý: Hãy hoàn thành bài thi trong thời gian quy định. Mọi thông tin kết quả sẽ được thông báo sau khi bạn hoàn thành.
+                  a(href=linkTest, target='_blank') Bắt đầu làm bài thi
+  p ⏰ Lưu ý: Không đổi ID trong bài làm. Hãy hoàn thành bài thi trong thời gian quy định. Mọi thông tin kết quả sẽ được thông báo sau khi bạn hoàn thành.
   hr
   p Nếu bạn cần hỗ trợ thêm, vui lòng liên hệ bộ phận hỗ trợ khách hàng của chúng tôi:
   ul

@@ -52,17 +52,25 @@ app.use(compression());
 app.post(
   "/test-results",
   catchAsync(async (req, res, next) => {
-    const { studentId, testScore, category } = req.body;
-    const student = await Student.findById(studentId).populate("user");
+    const { studentId, testScore } = req.body;
+    const student = await Student.findById(studentId).populate("user category");
+    const categoryName = student.category[0].name;
+    const score =
+      categoryName === "IELTS" ? (testScore / 20) * 9 : (testScore / 20) * 990;
+    const roundedScore =
+      categoryName === "IELTS"
+        ? 0.5 * Math.round(2 * score)
+        : 5 * Math.round(5 * score);
     if (!student) return next(new AppError("Không tìm thấy học viên", 404));
-    student.testScore = testScore;
+    student.testScore = roundedScore;
     student.testResultAt = Date.now();
+    student.tested = true;
     student.save({ validateBeforeSave: false });
     try {
       await new Email(student.user, {
         studentName: student.name,
-        category,
-        score: testScore,
+        category: categoryName,
+        score: roundedScore,
       }).sendTestResult();
     } catch (error) {
       console.log("Lỗi khi gửi mail", error.message);
