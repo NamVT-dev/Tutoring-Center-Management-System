@@ -70,6 +70,7 @@ const classSchema = new mongoose.Schema({
   preferredTeacher: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
+    required: true,
   },
   scheduleSignature: {
     type: String,
