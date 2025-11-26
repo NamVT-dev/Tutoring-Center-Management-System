@@ -107,7 +107,7 @@ exports.getStudentDemandReport = catchAsync(async (req, res, next) => {
     },
   });
 });
-exports.getDashboardOverview = catchAsync(async (req, res, next) => {
+exports.getDashboardOverview = catchAsync(async (req, res) => {
   const timezone = "Asia/Ho_Chi_Minh";
   const startOfMonth = moment.tz(timezone).startOf("month").toDate();
   const endOfMonth = moment.tz(timezone).endOf("month").toDate();
@@ -238,7 +238,7 @@ const getReportDateRange = (mode, dateStr, timezone) => {
 
   return { start: start.toDate(), end: end.toDate(), unit };
 };
-exports.getRevenueReport = catchAsync(async (req, res, next) => {
+exports.getRevenueReport = catchAsync(async (req, res) => {
   const timezone = "Asia/Ho_Chi_Minh";
   const { mode = "month", date } = req.query;
   const { start, end, unit } = getReportDateRange(mode, date, timezone);

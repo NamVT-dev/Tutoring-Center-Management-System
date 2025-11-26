@@ -20,7 +20,14 @@ const enrollmentSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["hold", "confirmed", "canceled", "waitlisted", "refunded"],
+      enum: [
+        "hold",
+        "confirmed",
+        "canceled",
+        "waitlisted",
+        "refunded",
+        "removed",
+      ],
       default: "hold",
       required: true,
       index: true,

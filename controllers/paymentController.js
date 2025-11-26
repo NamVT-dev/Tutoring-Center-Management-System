@@ -30,12 +30,8 @@ exports.getOneByMember = catchAsync(async (req, res, next) => {
   });
 });
 
-exports.handlePaymentWebhook = catchAsync(async (req, res, next) => {
+exports.handlePayment = catchAsync(async (req, res) => {
   const verify = vnpay.verifyReturnUrl(req.query);
-
-  if (!verify.isSuccess) {
-    return next(new AppError("Thanh toán thất bại", 400));
-  }
 
   const { vnp_TxnRef: enrollmentId, vnp_TransactionNo: invoiceId } = req.query;
 
@@ -49,6 +45,12 @@ exports.handlePaymentWebhook = catchAsync(async (req, res, next) => {
         `Webhook Error: Không tìm thấy Enrollment ID: ${enrollmentId}`,
         404
       );
+    }
+
+    if (!verify.isSuccess) {
+      enrollment.status = "cancel";
+      enrollment.save();
+      throw new AppError("Thanh toán thất bại", 400);
     }
 
     // A. Xử lý trường hợp lý tưởng: Thanh toán khi 'hold' CÒN HẠN
@@ -156,3 +158,32 @@ exports.getAllPayment = factory.getAll(Payment, [
 ]);
 
 exports.getOne = factory.getOne(Payment);
+
+exports.refundPayment = catchAsync(async (req, res, next) => {
+  const payment = await Payment.findById(req.params.id);
+  if (!payment) return next(new AppError("Không tìm thấy thanh toán", 404));
+  if (payment.status !== "confirmed")
+    return next(new AppError("Thanh toán không hợp lệ", 400));
+  payment.status = "refunded";
+  await payment.save();
+  const enrollment = await Enrollment.findById(payment.invoiceId);
+  if (!enrollment)
+    return res
+      .status(200)
+      .json({ status: "success", message: "Hoàn tiền thành công" });
+
+  enrollment.status = "canceled";
+  await enrollment.save();
+  const student = await Student.findById(enrollment.student);
+  student.class = student.class.filter(
+    (cl) => cl.toString() !== enrollment.class.toString()
+  );
+  await student.save();
+  const enrollClass = await Class.findById(enrollment.class);
+  enrollClass.student = enrollClass.student.filter(
+    (st) => st.toString() !== student.id.toString()
+  );
+  await enrollClass.save();
+
+  res.status(200).json({ status: "success", message: "Hoàn tiền thành công" });
+});

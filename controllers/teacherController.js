@@ -403,7 +403,7 @@ const uploadLearningMaterial = catchAsync(async (req, res, next) => {
     title,
     content,
   });
-  tClass.save();
+  await tClass.save();
   res.status(200).json({
     status: "success",
     data: {
