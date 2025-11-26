@@ -95,5 +95,26 @@ class APIFeatures {
     }
     return this;
   }
+
+  async searchByRef(ModelRef, fields = []) {
+    if (!this.queryString.search || fields.length === 0) return this;
+
+    // 1) Tìm user match với search
+    const keyword = this.queryString.search;
+
+    const orQuery = fields.map((field) => ({
+      [field]: { $regex: _.escapeRegExp(keyword), $options: "i" },
+    }));
+
+    const refDocs = await ModelRef.find({ $or: orQuery }).select("_id");
+    const refIds = refDocs.map((d) => d._id);
+
+    // 2) Inject vào filter query hiện tại
+    this.query = this.query.find({
+      user: { $in: refIds },
+    });
+
+    return this;
+  }
 }
 module.exports = APIFeatures;

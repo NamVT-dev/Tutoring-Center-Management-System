@@ -8,10 +8,12 @@ const Student = require("../models/studentModel");
 const factory = require("./handlerFactory");
 const { notifyPaymentConfirmed } = require("../utils/notification");
 const vnpay = require("../config/vnpay");
+const APIFeatures = require("../utils/apiFeatures");
+const { User } = require("../models/userModel");
 
 exports.getMyPayments = catchAsync(async (req, res) => {
   const payments = await Payment.find({
-    userId: req.user.id,
+    user: req.user.id,
   });
 
   res.status(200).json({
@@ -22,7 +24,7 @@ exports.getMyPayments = catchAsync(async (req, res) => {
 
 exports.getOneByMember = catchAsync(async (req, res, next) => {
   const payment = await Payment.findById(req.params.id);
-  if (!payment || payment.user !== req.user.id)
+  if (!payment || payment.user.toString() !== req.user.id.toString())
     return next(new AppError("Không tìm thấy thanh toán", 404));
   res.status(200).json({
     status: "success",
@@ -152,10 +154,30 @@ exports.handlePayment = catchAsync(async (req, res) => {
   }
 });
 
-exports.getAllPayment = factory.getAll(Payment, [
-  "user.profile.fullname",
-  "user.email",
-]);
+exports.getAllPayment = catchAsync(async (req, res) => {
+  const features = new APIFeatures(Payment.find(), req.query)
+    .filter()
+    .sort()
+    .limitFields()
+    .paginate()
+    .search();
+
+  const totalDocuments = await features.countDocuments(Payment);
+  await features.searchByRef(User, ["profile.fullname", "email"]);
+
+  const doc = await features.query;
+  const limit = req.query.limit * 1 || 100;
+  const totalPages = Math.ceil(totalDocuments / limit);
+
+  res.status(200).json({
+    status: "success",
+    results: doc.length,
+    totalPages,
+    data: {
+      data: doc,
+    },
+  });
+});
 
 exports.getOne = factory.getOne(Payment);
 
