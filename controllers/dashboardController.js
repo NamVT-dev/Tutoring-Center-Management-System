@@ -8,6 +8,7 @@ const Complain = require("../models/complainModel");
 const { User, Teacher } = require("../models/userModel");
 const { mapScoreToLevel, LEVEL_INDEX } = require("../utils/levels");
 const moment = require("moment-timezone");
+const APIFeatures = require("../utils/apiFeatures");
 
 const findNewLeads = (startDate, endDate) => {
   return Student.find({
@@ -375,6 +376,33 @@ exports.getRevenueReport = catchAsync(async (req, res) => {
       stats,
       transactionStatus,
       chart,
+    },
+  });
+});
+
+exports.getAllEnrollment = catchAsync(async (req, res) => {
+  const features = new APIFeatures(
+    Enrollment.find().populate("student", "name category tested testScore"),
+    req.query
+  )
+    .filter()
+    .sort()
+    .limitFields()
+    .paginate();
+
+  const totalDocuments = await features.countDocuments(Enrollment);
+
+  const doc = await features.query;
+  const limit = req.query.limit * 1 || 100;
+  const totalPages = Math.ceil(totalDocuments / limit);
+
+  // SEND RESPONSE
+  res.status(200).json({
+    status: "success",
+    results: doc.length,
+    totalPages,
+    data: {
+      data: doc,
     },
   });
 });
