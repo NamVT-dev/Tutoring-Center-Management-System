@@ -65,7 +65,16 @@ const classSchema = new mongoose.Schema({
   },
   minStudent: Number,
   maxStudent: Number,
-  learningMaterial: String,
+  learningMaterial: [
+    {
+      title: String,
+      content: String,
+      createAt: {
+        type: Date,
+        default: Date.now(),
+      },
+    },
+  ],
   // Ưu tiên GV chính (nếu có)
   preferredTeacher: {
     type: mongoose.Schema.Types.ObjectId,

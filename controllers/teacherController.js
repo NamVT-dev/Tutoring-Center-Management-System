@@ -214,7 +214,7 @@ const getMyClasses = catchAsync(async (req, res, next) => {
   });
 });
 
-const getMySchedule = catchAsync(async (req, res, next) => {
+const getMySchedule = catchAsync(async (req, res) => {
   const teacherId = req.user.id;
   const timezone = "Asia/Ho_Chi_Minh";
 
@@ -254,7 +254,6 @@ const getMySchedule = catchAsync(async (req, res, next) => {
 
 const getStudentClassDetail = catchAsync(async (req, res, next) => {
   const classId = req.params.id;
-  const teacher = req.user;
 
   const [classInfo, sessions, enrollments] = await Promise.all([
     Class.findById(classId)
@@ -384,6 +383,35 @@ const getHighlightTeacher = catchAsync(async (req, res) => {
   res.status(200).json({ results: teachers.length, data: teachers });
 });
 
+const uploadLearningMaterial = catchAsync(async (req, res, next) => {
+  const { classId } = req.params;
+  const { title, content } = req.body;
+
+  if (!title || !content)
+    return next(new AppError("Thiếu dữ liệu đầu vào", 400));
+
+  const tClass = await Class.findById(classId);
+  if (!tClass) return next(new AppError("Không tìm thấy lớp học", 404));
+  if (tClass.preferredTeacher.toString() !== req.user.id)
+    return next(
+      new AppError(
+        "Chỉ giáo viên phụ trách mới được up tài liệu cho lớp này",
+        400
+      )
+    );
+  tClass.learningMaterial.push({
+    title,
+    content,
+  });
+  tClass.save();
+  res.status(200).json({
+    status: "success",
+    data: {
+      class: tClass,
+    },
+  });
+});
+
 module.exports = {
   registerShiftAvailability,
   updateTeacherSkills,
@@ -392,4 +420,5 @@ module.exports = {
   getStudentClassDetail,
   getOneTeacher,
   getHighlightTeacher,
+  uploadLearningMaterial,
 };

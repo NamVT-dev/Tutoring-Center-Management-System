@@ -73,7 +73,6 @@ const autoCancelHoldJob = () => {
         if (expiredHolds.length === 0) {
           await session.abortTransaction();
           session.endSession();
-          console.log("⏰ Cron (Holds): Không có chỗ hết hạn.");
           return;
         }
 
