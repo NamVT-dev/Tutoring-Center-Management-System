@@ -5,7 +5,6 @@ const { buildPaginatedQuery } = require("../utils/queryHelper");
 const Class = require("../models/classModel");
 const Session = require("../models/sessionModel");
 const Center = require("../models/centerModel");
-const Course = require("../models/courseModel");
 const { Teacher } = require("../models/userModel");
 const factory = require("./handlerFactory");
 
@@ -15,6 +14,7 @@ const {
 } = require("../services/classChangeService");
 const Student = require("../models/studentModel");
 const Attendance = require("../models/attendanceModel");
+const Enrollment = require("../models/enrollmentModel");
 
 function findShiftByName(centerConfig, shiftName) {
   return (centerConfig?.shifts || []).find((s) => s.name === shiftName) || null;
@@ -327,8 +327,31 @@ exports.addStudent = catchAsync(async (req, res, next) => {
     return next(new AppError("Lớp đã tồn tại học viên đó", 400));
   if (addClass.student.lenth >= addClass.maxStudent)
     return next(new AppError("Lớp học đã đạt số lượng tối đa", 400));
+
+  //Add student to class
   addClass.student.push(req.body.studentId);
-  addClass.save();
+  await addClass.save();
+
+  //Add class to student
+  student.class.push(addClass.id);
+  student.enrolled = true;
+  await student.save();
+
+  //Change enrollment status
+  const enrollment = await Enrollment.findOne({
+    student,
+    class: addClass,
+  });
+  if (!enrollment)
+    return next(
+      new AppError(
+        "Đã thêm học viên vào  lớp nhưng không tìm thấy enrollment",
+        400
+      )
+    );
+
+  enrollment.status = "confirmed";
+  await enrollment.save();
 
   const attendances = await Attendance.find()
     .populate({
@@ -352,5 +375,52 @@ exports.addStudent = catchAsync(async (req, res, next) => {
     data: {
       class: addClass,
     },
+  });
+});
+
+exports.removeStudent = catchAsync(async (req, res, next) => {
+  const removeClass = await Class.findById(req.params.id);
+  if (!removeClass) return next(new AppError("Không tìm thấy lớp", 404));
+  const student = await Student.findById(req.body.studentId);
+  if (!student) return next(new AppError("Không tìm thấy học viên", 404));
+  if (removeClass.startAt.getTime() < Date.now())
+    return next(new AppError("Lớp học đã diễn ra", 400));
+  if (!removeClass.student.includes(student.id.toString()))
+    return next(new AppError("Lớp học không có học viên này", 400));
+
+  //Remove student from class
+  removeClass.student = removeClass.student.filter(
+    (s) => s.toString() !== student.id.toString()
+  );
+  await removeClass.save();
+
+  //Remove class from student
+  student.enrolled = false;
+  student.class = student.class.filter(
+    (cl) => cl.toString() !== removeClass.id.toString()
+  );
+
+  await student.save();
+
+  //Change enrollment status
+  const enrollment = await Enrollment.findOne({
+    student: student,
+    class: removeClass,
+  });
+
+  if (!enrollment)
+    return next(
+      new AppError(
+        "Đã xóa học viên khỏi lớp nhưng không tìm thấy enrollment",
+        400
+      )
+    );
+
+  enrollment.status = "removed";
+  await enrollment.save();
+
+  res.status(200).json({
+    status: "success",
+    message: "Gỡ học viên khỏi lớp thành công!",
   });
 });
