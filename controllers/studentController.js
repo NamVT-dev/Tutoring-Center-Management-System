@@ -16,6 +16,7 @@ const {
 } = require("../utils/levels");
 const { notifyHoldCreated } = require("../utils/notification");
 const vnpay = require("../config/vnpay");
+const Attendance = require("../models/attendanceModel");
 
 exports.getAllMyStudent = catchAsync(async (req, res) => {
   const user = await req.user.populate("student");
@@ -392,7 +393,6 @@ exports.createSeatHold = catchAsync(async (req, res, next) => {
 
 exports.getMyEnrolledClasses = catchAsync(async (req, res, next) => {
   const studentId = req.params.id;
-  const userId = req.user.id;
 
   const isOwner = req.user.student.some((s) => s._id.toString() === studentId);
   if (!isOwner) {
@@ -428,7 +428,6 @@ exports.getMyEnrolledClasses = catchAsync(async (req, res, next) => {
 
 exports.getStudentClassDetail = catchAsync(async (req, res, next) => {
   const { id: studentId, classId } = req.params;
-  const userId = req.user.id;
 
   const isOwner = req.user.student.some((s) => s._id.toString() === studentId);
   if (!isOwner) {
@@ -480,6 +479,25 @@ exports.getStudentClassDetail = catchAsync(async (req, res, next) => {
       .lean(),
   ]);
 
+  await Promise.all(
+    sessions.map(async (s) => {
+      const attendance = await Attendance.findOne(
+        {
+          session: s,
+          attendance: { $elemMatch: { student: studentId } },
+        },
+        {
+          "attendance.status": 1,
+          "attendance.note": 1,
+          "attendance.student": 0,
+          status: 1,
+        }
+      );
+      if (!attendance) return;
+      s.attendance = attendance;
+    })
+  );
+
   if (!classInfo) {
     return next(new AppError("Không tìm thấy lớp học", 404));
   }
@@ -496,7 +514,6 @@ exports.getStudentClassDetail = catchAsync(async (req, res, next) => {
 
 exports.getMySchedule = catchAsync(async (req, res, next) => {
   const studentId = req.params.id;
-  const userId = req.user.id;
   const timezone = "Asia/Ho_Chi_Minh";
 
   const isOwner = req.user.student.some((s) => s._id.toString() === studentId);
