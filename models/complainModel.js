@@ -20,11 +20,15 @@ const complainSchema = new mongoose.Schema(
       default: "Pending",
       index: true,
     },
+    staffInCharge: {
+      type: mongoose.Schema.ObjectId,
+      ref: "User",
+    },
   },
   { timestamps: true }
 );
 complainSchema.pre(/^find/, function (next) {
-  this.populate("user");
+  this.populate("user staffInCharge");
   next();
 });
 const Complain = mongoose.model("Complain", complainSchema, "complains");
