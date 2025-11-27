@@ -259,6 +259,7 @@ const getStudentClassDetail = catchAsync(async (req, res, next) => {
     Class.findById(classId)
       .populate("course", "name level description")
       .populate("preferredTeacher", "profile.fullname")
+      .populate("student", "name")
       .lean(),
 
     Session.find({
