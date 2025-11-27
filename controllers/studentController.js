@@ -429,12 +429,12 @@ exports.getMyEnrolledClasses = catchAsync(async (req, res, next) => {
 exports.getStudentClassDetail = catchAsync(async (req, res, next) => {
   const { id: studentId, classId } = req.params;
 
-  const isOwner = req.user.student.some((s) => s._id.toString() === studentId);
-  if (!isOwner) {
-    return next(
-      new AppError("Bạn không có quyền xem thông tin của học viên này", 403)
-    );
-  }
+  // const isOwner = req.user.student.some((s) => s._id.toString() === studentId);
+  // if (!isOwner) {
+  //   return next(
+  //     new AppError("Bạn không có quyền xem thông tin của học viên này", 403)
+  //   );
+  // }
 
   const isEnrolled = await Enrollment.exists({
     student: studentId,
@@ -489,12 +489,15 @@ exports.getStudentClassDetail = catchAsync(async (req, res, next) => {
         {
           "attendance.status": 1,
           "attendance.note": 1,
-          "attendance.student": 0,
+          "attendance.student": 1,
           status: 1,
         }
       );
       if (!attendance) return;
-      s.attendance = attendance;
+      s.attendanceStatus = attendance.status;
+      s.attendance = attendance.attendance.find(
+        (a) => a.student.id.toString() === studentId.toString()
+      );
     })
   );
 
