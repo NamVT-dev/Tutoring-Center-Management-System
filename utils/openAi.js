@@ -43,3 +43,37 @@ exports.buildFacts = (retrieved) => {
   }
   return facts.join("\n");
 };
+
+exports.aiTranslate = async (userQuestion) => {
+  const result = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    tools: [
+      {
+        type: "function",
+        function: {
+          name: "translate",
+          parameters: {
+            type: "object",
+            properties: {
+              english: { type: "string" },
+            },
+            required: ["english"],
+          },
+        },
+      },
+    ],
+    messages: [
+      {
+        role: "system",
+        content: "Translate to English ONLY. Preserve meaning 100%.",
+      },
+      {
+        role: "user",
+        content: userQuestion,
+      },
+    ],
+  });
+
+  return JSON.parse(result.choices[0].message.tool_calls[0].function.arguments)
+    .english;
+};

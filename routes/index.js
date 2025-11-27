@@ -26,6 +26,7 @@ route.use("/notification", notificationRoutes);
 route.use("/payment", paymentRoutes);
 route.use("/substitute", substituteRoutes);
 route.use("/complain", complainRoutes);
+route.use("/ai", complainRoutes);
 route.use("/", memberRoutes);
 
 module.exports = route;

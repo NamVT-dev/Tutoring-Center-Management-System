@@ -24,7 +24,7 @@ exports.getMyPayments = catchAsync(async (req, res) => {
 
 exports.getOneByMember = catchAsync(async (req, res, next) => {
   const payment = await Payment.findById(req.params.id);
-  if (!payment || payment.user.toString() !== req.user.id.toString())
+  if (!payment || payment.user.id.toString() !== req.user.id.toString())
     return next(new AppError("Không tìm thấy thanh toán", 404));
   res.status(200).json({
     status: "success",

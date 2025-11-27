@@ -85,6 +85,10 @@ const centerSchema = new mongoose.Schema(
       required: true,
     },
     isScheduling: { type: Boolean, default: false },
+    embedding: {
+      type: [Number],
+      select: false,
+    },
   },
   { minimize: false }
 );
