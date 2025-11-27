@@ -312,7 +312,19 @@ exports.cancelClass = catchAsync(async (req, res, next) => {
     session.endSession();
   }
 });
-exports.createClass = factory.createOne(Class);
+exports.createClass = catchAsync(async (req, res) => {
+  const doc = await Class.create(req.body);
+  const teacher = await Teacher.findById(req.body.preferredTeacher);
+  teacher.class.push(doc.id);
+  teacher.save();
+
+  res.status(201).json({
+    status: "success",
+    data: {
+      data: doc,
+    },
+  });
+});
 exports.updateClass = factory.updateOne(Class);
 exports.deleteClass = factory.deleteOne(Class);
 
