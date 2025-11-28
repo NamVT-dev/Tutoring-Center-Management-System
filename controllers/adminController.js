@@ -137,7 +137,7 @@ const getAllUserAccount = factory.getAll(User, [
   "profile.phoneNumber",
 ]);
 const getOneUserAccount = catchAsync(async (req, res, next) => {
-  const account = await User.findById(req.params.id);
+  const account = await User.findById(req.params.id).populate("student");
   if (!account || !["member", "teacher"].includes(account.role)) {
     return next(new AppError("Không tìm thấy người dùng", 404));
   }
