@@ -70,4 +70,7 @@ route.get("/dashboard", dashboardCtrl.getDashboardOverview);
 route.get("/reports/revenue", dashboardCtrl.getRevenueReport);
 //quan ly session
 route.patch("/session/:id", sessionCtrl.updateSession);
+
+route.patch("/deactive-account/:id", authCtrl.deactiveAccount);
+
 module.exports = route;

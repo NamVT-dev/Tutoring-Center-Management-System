@@ -26,23 +26,20 @@ const substituteRequestSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: [
-        "pending_teacher", 
-        "pending_admin", 
-        "approved", 
-        "rejected", 
-        "cancelled", 
+        "pending_teacher",
+        "pending_admin",
+        "approved",
+        "rejected",
+        "cancelled",
       ],
       default: "pending_teacher",
     },
 
-    teacherResponse: String, 
-    adminResponse: String, 
-    processedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, 
+    teacherResponse: String,
+    adminResponse: String,
+    processedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true }
 );
 
-module.exports = mongoose.model(
-  "SubstituteRequest",
-  substituteRequestSchema
-);
+module.exports = mongoose.model("SubstituteRequest", substituteRequestSchema);

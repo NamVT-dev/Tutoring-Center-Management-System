@@ -192,7 +192,11 @@ exports.deleteScheduleJob = catchAsync(async (req, res, next) => {
       throw new AppError("Không tìm thấy Job xếp lịch này", 404);
     }
     if (job.status === "running") {
-       await Center.findOneAndUpdate({ key: "default" }, { isScheduling: false }, { session });
+      await Center.findOneAndUpdate(
+        { key: "default" },
+        { isScheduling: false },
+        { session }
+      );
     }
 
     if (job.status === "completed") {
@@ -201,7 +205,7 @@ exports.deleteScheduleJob = catchAsync(async (req, res, next) => {
       const classesToDelete = await Class.find({ createdByJob: jobId })
         .select("_id")
         .session(session);
-      
+
       const classIds = classesToDelete.map((c) => c._id);
 
       if (classIds.length > 0) {
@@ -220,9 +224,9 @@ exports.deleteScheduleJob = catchAsync(async (req, res, next) => {
     await ScheduleJob.findByIdAndDelete(jobId, { session });
 
     await Center.findOneAndUpdate(
-        { key: "default" }, 
-        { isScheduling: false }, 
-        { session }
+      { key: "default" },
+      { isScheduling: false },
+      { session }
     );
 
     await session.commitTransaction();
@@ -231,11 +235,10 @@ exports.deleteScheduleJob = catchAsync(async (req, res, next) => {
       status: "success",
       data: null,
     });
-
   } catch (error) {
     await session.abortTransaction();
     return next(new AppError("Không thể hủy Job: " + error.message, 500));
   } finally {
     session.endSession();
   }
-})
+});

@@ -99,7 +99,7 @@ function getRoadmapLevels(currentLevel, targetLevel) {
   }
 
   // Trả về các level từ (hiện tại + 1) đến (mục tiêu)
-  const result= LEVEL_ORDER.slice(currentIndex, targetIndex + 1);
+  const result = LEVEL_ORDER.slice(currentIndex, targetIndex + 1);
   console.log("[DEBUG] Resulting roadmap:", result);
   return result;
 }
@@ -110,5 +110,5 @@ module.exports = {
   mapScoreToLevel,
   canTeachCourse,
   suggestCourseForStudent,
-  getRoadmapLevels
+  getRoadmapLevels,
 };

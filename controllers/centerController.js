@@ -181,7 +181,7 @@ const updateConfig = catchAsync(async (req, res, next) => {
   });
 });
 const availabilityRegistration = catchAsync(async (req, res, next) => {
-  const { isOpen } = req.body; 
+  const { isOpen } = req.body;
 
   if (typeof isOpen !== "boolean") {
     return next(
@@ -192,7 +192,7 @@ const availabilityRegistration = catchAsync(async (req, res, next) => {
   const center = await Center.findOneAndUpdate(
     { key: "default" },
     { $set: { isAvailabilityOpen: isOpen } },
-    { new: true, upsert: true } 
+    { new: true, upsert: true }
   );
 
   res.status(200).json({
@@ -208,5 +208,5 @@ const availabilityRegistration = catchAsync(async (req, res, next) => {
 module.exports = {
   getConfig,
   updateConfig,
-  availabilityRegistration
+  availabilityRegistration,
 };

@@ -26,6 +26,6 @@ router.get("/analytics", scheduleController.getScheduleAnalytics);
 // API kiểm tra trạng thái khóa
 router.get("/status", scheduleController.getSchedulerStatus);
 
-router.delete("/jobs/:id",scheduleController.deleteScheduleJob);
+router.delete("/jobs/:id", scheduleController.deleteScheduleJob);
 
 module.exports = router;

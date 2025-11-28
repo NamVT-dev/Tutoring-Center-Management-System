@@ -8,7 +8,6 @@ const Course = require("../models/courseModel");
 const { canTeachCourse } = require("../services/schedulingService");
 
 const checkConflict = async (sessionId, teacherId, roomId, startAt, endAt) => {
-
   const conflictQuery = {
     _id: { $ne: new Types.ObjectId(sessionId) },
     status: { $in: ["scheduled", "published"] },
@@ -26,14 +25,13 @@ const checkConflict = async (sessionId, teacherId, roomId, startAt, endAt) => {
     ],
   };
 
-
   const existingConflict = await Session.findOne(conflictQuery)
     .populate("teacher", "_id")
     .populate("room", "_id")
     .populate("class", "name")
     .lean();
   if (!existingConflict) {
-    return null; 
+    return null;
   }
 
   if (
@@ -77,8 +75,8 @@ exports.updateSession = catchAsync(async (req, res, next) => {
   if (!session) {
     return next(new AppError("Không tìm thấy buổi học này", 404));
   }
-  session.depopulate('teacher');
-  session.depopulate('room');
+  session.depopulate("teacher");
+  session.depopulate("room");
 
   const isRescheduling =
     allowedUpdates.startAt || allowedUpdates.teacher || allowedUpdates.room;

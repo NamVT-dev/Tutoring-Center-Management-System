@@ -13,16 +13,16 @@ exports.getAllCustomRequests = catchAsync(async (req, res, next) => {
     .sort()
     .limitFields()
     .paginate()
-    .search(); 
+    .search();
 
   const totalDocuments = await features.countDocuments(CustomScheduleRequest);
 
   const popOptions = [
-    { path: 'student', select: 'name email user' },
-    { path: 'category', select: 'name' },
-    { path: 'course', select: 'name level' }
+    { path: "student", select: "name email user" },
+    { path: "category", select: "name" },
+    { path: "course", select: "name level" },
   ];
-  
+
   const doc = await features.query.populate(popOptions);
 
   const limit = req.query.limit * 1 || 100;
@@ -38,13 +38,11 @@ exports.getAllCustomRequests = catchAsync(async (req, res, next) => {
   });
 });
 
-exports.getOneCustomRequest = factory.getOne(CustomScheduleRequest, 
-  [
-    { path: 'student', select: 'name email' },
-    { path: 'category', select: 'name' },
-    { path: 'course', select: 'name level' }
-  ]
-);
+exports.getOneCustomRequest = factory.getOne(CustomScheduleRequest, [
+  { path: "student", select: "name email" },
+  { path: "category", select: "name" },
+  { path: "course", select: "name level" },
+]);
 exports.updateCustomRequest = catchAsync(async (req, res, next) => {
   const { status, adminNote } = req.body;
   const updates = {};
@@ -83,7 +81,6 @@ exports.updateCustomRequest = catchAsync(async (req, res, next) => {
 });
 exports.deleteOneCustomRequest = factory.deleteOne(CustomScheduleRequest);
 exports.getCustomRequestSummary = catchAsync(async (req, res, next) => {
-  
   const aggregationPipeline = [
     { $match: { status: "open" } },
     { $unwind: "$preferredDays" },
@@ -92,7 +89,9 @@ exports.getCustomRequestSummary = catchAsync(async (req, res, next) => {
       $group: {
         _id: {
           targetId: { $ifNull: ["$course", "$category"] },
-          targetType: { $cond: { if: "$course", then: "Course", else: "Category" } },
+          targetType: {
+            $cond: { if: "$course", then: "Course", else: "Category" },
+          },
           day: "$preferredDays",
           shift: "$preferredShifts",
         },
@@ -111,18 +110,20 @@ exports.getCustomRequestSummary = catchAsync(async (req, res, next) => {
       },
     },
     { $sort: { studentCount: -1 } },
-    { $limit: 100 } 
+    { $limit: 100 },
   ];
 
   const summary = await CustomScheduleRequest.aggregate(aggregationPipeline);
 
   await Student.populate(summary, {
     path: "students",
-    select: "name profile.phoneNumber email", 
+    select: "name profile.phoneNumber email",
   });
 
-  const courseTargets = summary.filter(item => item.targetType === 'Course');
-  const categoryTargets = summary.filter(item => item.targetType === 'Category');
+  const courseTargets = summary.filter((item) => item.targetType === "Course");
+  const categoryTargets = summary.filter(
+    (item) => item.targetType === "Category"
+  );
 
   if (courseTargets.length > 0) {
     await Course.populate(courseTargets, {
@@ -136,13 +137,13 @@ exports.getCustomRequestSummary = catchAsync(async (req, res, next) => {
       select: "name",
     });
   }
-  
-  const finalResult = [...courseTargets, ...categoryTargets].map(item => {
-      item.targetInfo = item.targetId;
-      delete item.targetId;
-      return item;
+
+  const finalResult = [...courseTargets, ...categoryTargets].map((item) => {
+    item.targetInfo = item.targetId;
+    delete item.targetId;
+    return item;
   });
-  
+
   finalResult.sort((a, b) => b.studentCount - a.studentCount);
 
   res.status(200).json({

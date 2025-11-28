@@ -146,8 +146,12 @@ exports.createSystemNotification = async ({
 }) => {
   try {
     const notifPayload = {
-      title, body, type, priority, isRead: false,
-      data: { linkId, linkModel }
+      title,
+      body,
+      type,
+      priority,
+      isRead: false,
+      data: { linkId, linkModel },
     };
 
     if (recipientId) notifPayload.recipientId = recipientId;

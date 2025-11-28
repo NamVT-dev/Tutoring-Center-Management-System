@@ -4,7 +4,7 @@ const customScheduleRequestSchema = new mongoose.Schema(
   {
     student: {
       type: mongoose.Schema.ObjectId,
-      ref: "Student", 
+      ref: "Student",
       required: true,
       index: true,
     },
@@ -22,7 +22,7 @@ const customScheduleRequestSchema = new mongoose.Schema(
       validate: (v) => v.every((d) => d >= 0 && d <= 6),
     },
     preferredShifts: {
-      type: [String], 
+      type: [String],
     },
     note: String,
     status: {

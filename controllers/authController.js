@@ -98,8 +98,6 @@ exports.signup = catchAsync(async (req, res, next) => {
     createSendToken(newUser, 201, req, res);
     /*eslint-disable-next-line*/
   } catch (err) {
-    newUser.confirmPin = undefined;
-    await newUser.save({ validateBeforeSave: false });
     return next(new AppError("Có lỗi khi gửi email. Hãy thử lại sau!"), 500);
   }
 });
@@ -244,6 +242,8 @@ exports.resendConfirmEmail = catchAsync(async (req, res, next) => {
   if (user.active)
     return next(new AppError("Tài khoản đã được xác nhận!", 400));
 
+  if (!user.confirmPin && !user.confirmPinExpires)
+    return next(new AppError("Tài khoản bị tạm khóa", 403));
   const confirmPin = user.createConfirmPin();
 
   await user.save({ validateBeforeSave: false });
@@ -256,8 +256,6 @@ exports.resendConfirmEmail = catchAsync(async (req, res, next) => {
     });
     /*eslint-disable-next-line*/
   } catch (err) {
-    user.confirmPin = undefined;
-    await user.save({ validateBeforeSave: false });
     return next(new AppError("Có lỗi khi gửi email. Hãy thử lại sau!"), 500);
   }
 });
@@ -354,5 +352,16 @@ exports.updateProfile = catchAsync(async (req, res, next) => {
     data: {
       user: updatedUser,
     },
+  });
+});
+
+exports.deactiveAccount = catchAsync(async (req, res, next) => {
+  const user = await User.findById(req.params.id);
+  if (!user) return next(new AppError("Không tìm thấy người dùng"));
+  user.active = false;
+  user.save({ validateBeforeSave: false });
+  res.status(200).json({
+    status: "success",
+    message: "Cập nhật trạng thái người dùng thành công",
   });
 });
