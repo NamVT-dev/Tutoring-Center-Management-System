@@ -350,7 +350,7 @@ exports.addStudent = catchAsync(async (req, res, next) => {
 
   const student = await Student.findById(enrollment.student);
   if (!student) return next(new AppError("Không tìm thấy học viên", 404));
-  if (addClass.student.includes(req.body.studentId))
+  if (addClass.student.includes(student.id))
     return next(new AppError("Lớp đã tồn tại học viên đó", 400));
   if (addClass.student.lenth >= addClass.maxStudent)
     return next(new AppError("Lớp học đã đạt số lượng tối đa", 400));
@@ -374,7 +374,7 @@ exports.addStudent = catchAsync(async (req, res, next) => {
   const filtered = attendances.filter((a) => !!a.session);
   filtered.forEach((a) => {
     a.attendance.push({
-      student: req.body.studentId,
+      student: student.id,
       status: "absent",
       note: "đăng kí muộn",
     });
