@@ -333,7 +333,22 @@ exports.createManySession = factory.createMany(Session);
 exports.addStudent = catchAsync(async (req, res, next) => {
   const addClass = await Class.findById(req.params.id);
   if (!addClass) return next(new AppError("Không tìm thấy lớp học", 404));
-  const student = await Student.findById(req.body.studentId);
+
+  const enrollment = await Enrollment.findById(req.body.enrollmentId);
+  if (!enrollment) return next(new AppError("Không tìm thấy enrollment", 404));
+  if (
+    enrollment.class.toString() !== addClass.id.toString() &&
+    enrollment.status !== "removed"
+  )
+    return next(
+      new AppError("Không được add lớp khác khi trạng thái không phải removed")
+    );
+
+  enrollment.class = addClass.id;
+  enrollment.status = "confirmed";
+  await enrollment.save();
+
+  const student = await Student.findById(enrollment.student);
   if (!student) return next(new AppError("Không tìm thấy học viên", 404));
   if (addClass.student.includes(req.body.studentId))
     return next(new AppError("Lớp đã tồn tại học viên đó", 400));
@@ -341,29 +356,13 @@ exports.addStudent = catchAsync(async (req, res, next) => {
     return next(new AppError("Lớp học đã đạt số lượng tối đa", 400));
 
   //Add student to class
-  addClass.student.push(req.body.studentId);
+  addClass.student.push(student.id);
   await addClass.save();
 
   //Add class to student
   student.class.push(addClass.id);
   student.enrolled = true;
   await student.save();
-
-  //Change enrollment status
-  const enrollment = await Enrollment.findOne({
-    student,
-    class: addClass,
-  });
-  if (!enrollment)
-    return next(
-      new AppError(
-        "Đã thêm học viên vào  lớp nhưng không tìm thấy enrollment",
-        400
-      )
-    );
-
-  enrollment.status = "confirmed";
-  await enrollment.save();
 
   const attendances = await Attendance.find()
     .populate({
