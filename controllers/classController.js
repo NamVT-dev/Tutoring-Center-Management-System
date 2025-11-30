@@ -334,22 +334,20 @@ exports.addStudent = catchAsync(async (req, res, next) => {
   const addClass = await Class.findById(req.params.id);
   if (!addClass) return next(new AppError("Không tìm thấy lớp học", 404));
 
-  const enrollment = await Enrollment.findById(req.body.enrollmentId);
-  if (!enrollment) return next(new AppError("Không tìm thấy enrollment", 404));
-  if (
-    enrollment.class.toString() !== addClass.id.toString() &&
-    enrollment.status !== "removed"
-  )
-    return next(
-      new AppError("Không được add lớp khác khi trạng thái không phải removed")
-    );
+  const student = await Student.findById(req.body.studentId);
+  if (!student) return next(new AppError("Không tìm thấy học viên", 404));
+
+  const enrollment = await Enrollment.findOne({
+    student,
+    status: { $ne: "canceled" },
+  });
+  if (!enrollment)
+    return next(new AppError("Không tìm thấy enrollment của học viên", 404));
 
   enrollment.class = addClass.id;
   enrollment.status = "confirmed";
   await enrollment.save();
 
-  const student = await Student.findById(enrollment.student);
-  if (!student) return next(new AppError("Không tìm thấy học viên", 404));
   if (addClass.student.includes(student.id))
     return next(new AppError("Lớp đã tồn tại học viên đó", 400));
   if (addClass.student.length >= addClass.maxStudent)
