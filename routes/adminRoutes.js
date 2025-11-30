@@ -13,7 +13,7 @@ const route = express.Router();
 
 //auth for admin
 route.use(authCtrl.protect);
-route.use(authCtrl.restrictTo("admin"));
+route.use(authCtrl.restrictTo("admin", "staff"));
 //quan ly giao vien
 route.get("/teachers", adminController.getListTeacher);
 route.post("/teachers", adminController.createTeacher);
@@ -46,10 +46,6 @@ route.patch(
 route.get("/courses", courseCtrl.listCourses);
 route.delete("/courses/:id/delete", courseCtrl.deleteCourse);
 route.get("/courses/:id", courseCtrl.getCourse);
-//quan ly center
-route.get("/center/config", centerCtrl.getConfig);
-route.patch("/center/config", centerCtrl.updateConfig);
-route.patch("/center/isOpen", centerCtrl.availabilityRegistration);
 //quan ly category
 route.post("/categories", categoryCtrl.createCategory);
 //quan ly class
@@ -58,19 +54,27 @@ route.get("/classes/:id", classCtrl.getClassDetail);
 route.patch("/classes/:id/preview", classCtrl.previewChangeTeacher);
 route.patch("/classes/:id/apply", classCtrl.applyChangeTeacher);
 route.patch("/classes/:id/cancel", classCtrl.cancelClass);
+
+//quan ly session
+route.patch("/session/:id", sessionCtrl.updateSession);
+
+route.patch("/deactive-account/:id", authCtrl.deactiveAccount);
+
+route.use(authCtrl.restrictTo("admin"));
+
+//dashboard
+route.get("/reports/revenue", dashboardCtrl.getRevenueReport);
+route.get("/dashboard", dashboardCtrl.getDashboardOverview);
+route.get("/student-demand", dashboardCtrl.getStudentDemandReport);
+
+//quan ly center
+route.get("/center/config", centerCtrl.getConfig);
+route.patch("/center/config", centerCtrl.updateConfig);
+route.patch("/center/isOpen", centerCtrl.availabilityRegistration);
 //quan ly staff
 route.get("/staff", staffCtrl.getAllStaff);
 route.get("/staff/:id", staffCtrl.getOneStaff);
 route.post("/staff", staffCtrl.createStaff);
 route.delete("/staff/:id", staffCtrl.deleteStaff);
-
-//dashboard
-route.get("/student-demand", dashboardCtrl.getStudentDemandReport);
-route.get("/dashboard", dashboardCtrl.getDashboardOverview);
-route.get("/reports/revenue", dashboardCtrl.getRevenueReport);
-//quan ly session
-route.patch("/session/:id", sessionCtrl.updateSession);
-
-route.patch("/deactive-account/:id", authCtrl.deactiveAccount);
 
 module.exports = route;
