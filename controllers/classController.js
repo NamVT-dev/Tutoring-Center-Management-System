@@ -352,7 +352,7 @@ exports.addStudent = catchAsync(async (req, res, next) => {
   if (!student) return next(new AppError("Không tìm thấy học viên", 404));
   if (addClass.student.includes(student.id))
     return next(new AppError("Lớp đã tồn tại học viên đó", 400));
-  if (addClass.student.lenth >= addClass.maxStudent)
+  if (addClass.student.length >= addClass.maxStudent)
     return next(new AppError("Lớp học đã đạt số lượng tối đa", 400));
 
   //Add student to class
