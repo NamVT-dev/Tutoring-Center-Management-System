@@ -316,7 +316,7 @@ exports.createClass = catchAsync(async (req, res) => {
   const doc = await Class.create(req.body);
   const teacher = await Teacher.findById(req.body.preferredTeacher);
   teacher.class.push(doc.id);
-  teacher.save();
+  teacher.save({ validateBeforeSave: false });
 
   res.status(201).json({
     status: "success",

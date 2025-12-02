@@ -66,7 +66,7 @@ const updateRoom = catchAsync(async (req, res, next) => {
   }
 });
 
-const listRoom = catchAsync(async (req, res, next) => {
+const listRoom = catchAsync(async (req, res) => {
   const { status, page = 1, limit = 10 } = req.query;
   const filters = {};
   if (status) filters.status = status;
