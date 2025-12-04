@@ -331,7 +331,7 @@ exports.deleteClass = factory.deleteOne(Class);
 exports.createManySession = factory.createMany(Session);
 
 exports.addStudent = catchAsync(async (req, res, next) => {
-  const addClass = await Class.findById(req.params.id);
+  const addClass = await Class.findById(req.params.id).populate("course");
   if (!addClass) return next(new AppError("Không tìm thấy lớp học", 404));
 
   const student = await Student.findById(req.body.studentId);
@@ -350,7 +350,7 @@ exports.addStudent = catchAsync(async (req, res, next) => {
 
   if (addClass.student.includes(student.id))
     return next(new AppError("Lớp đã tồn tại học viên đó", 400));
-  if (addClass.student.length >= addClass.maxStudent)
+  if (addClass.student.length >= addClass.course.maxStudent)
     return next(new AppError("Lớp học đã đạt số lượng tối đa", 400));
 
   //Add student to class
