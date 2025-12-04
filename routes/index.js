@@ -12,6 +12,7 @@ const notificationRoutes = require("./notificationRoutes");
 const paymentRoutes = require("./paymentRoutes");
 const substituteRoutes = require("./substituteRequestRoute");
 const complainRoutes = require("./complainRoutes");
+const aiRoutes = require("./aiRoutes");
 const route = express.Router();
 
 route.use("/auth", authRoutes);
@@ -26,7 +27,7 @@ route.use("/notification", notificationRoutes);
 route.use("/payment", paymentRoutes);
 route.use("/substitute", substituteRoutes);
 route.use("/complain", complainRoutes);
-route.use("/ai", complainRoutes);
+route.use("/ai", aiRoutes);
 route.use("/", memberRoutes);
 
 module.exports = route;
