@@ -1,0 +1,13 @@
+extends baseEmail
+
+block content
+  p Xin chào #{firstName},
+  p Cảm ơn bạn đã đăng ký 🎉🙏
+  p Hãy nhập mã PIN ở bên dưới để xác nhận đăng ký!
+
+  div(style="text-align: center; margin: 20px 0;")
+    span(style="font-size: 36px; font-weight: bold; color: #0a66c2; background: #f0f8ff; padding: 15px 30px; border-radius: 8px; box-shadow: 0 0 5px rgba(0,0,0,0.1);")
+      = pin
+
+  p Nếu bạn gặp bất cứ khó khăn gì, đừng ngần ngại liên hệ chúng tôi!
+  p - Vu Thanh Nam, CEO

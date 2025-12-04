@@ -1,0 +1,23 @@
+extends baseEmail
+
+block content
+  p Chào #{firstName} (Phụ huynh của học viên #{studentName}),
+  
+  p Bạn đã giữ chỗ thành công cho lớp <strong>#{classInfo.name}</strong>.
+  
+  h3 Chi tiết đăng ký:
+  table(style="width:100%; border-collapse: collapse;")
+    tr
+      td(style="padding: 8px; border: 1px solid #ddd;") Ngày khai giảng:
+      td(style="padding: 8px; border: 1px solid #ddd;") <strong>#{new Date(classInfo.startAt).toLocaleDateString('vi-VN')}</strong>
+    tr
+      td(style="padding: 8px; border: 1px solid #ddd;") Số tiền cần thanh toán:
+      td(style="padding: 8px; border: 1px solid #ddd;") <strong>#{enrollment.amount.toLocaleString('vi-VN')} VND</strong>
+    tr
+      td(style="padding: 8px; border: 1px solid #ddd;") Giữ chỗ đến:
+      td(style="padding: 8px; border: 1px solid #ddd;") <strong>#{new Date(enrollment.holdExpiresAt).toLocaleString('vi-VN')}</strong>
+
+  p(style="margin-top: 20px;") Vui lòng hoàn tất thanh toán trước thời hạn để xác nhận đăng ký.
+  
+  a(href=`https://your-website.com/payment?enrollmentId=${enrollment._id}`, target="_blank", style="background-color: #4CAF50; color: white; padding: 14px 25px; text-align: center; text-decoration: none; display: inline-block; border-radius: 5px; margin-top: 10px;")
+    | Thanh toán ngay

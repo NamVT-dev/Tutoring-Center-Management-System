@@ -1,22 +1,113 @@
 const mongoose = require("mongoose");
+const { buildClassCode } = require("../utils/scheduleHelper");
+
+const weeklySlotSchema = new mongoose.Schema(
+  {
+    dayOfWeek: { type: Number, min: 0, max: 6, required: true },
+    startMinute: { type: Number, min: 0, max: 1439, required: true },
+    endMinute: { type: Number, min: 1, max: 1440, required: true },
+    room: { type: mongoose.Schema.Types.ObjectId, ref: "Room" },
+    teacher: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  },
+  { _id: false }
+);
+
+const oneOffScheduleSchema = new mongoose.Schema(
+  {
+    startAt: { type: Date, required: true }, // UTC
+    endAt: { type: Date, required: true }, // UTC
+    timezone: { type: String, default: "Asia/Bangkok" },
+    room: { type: mongoose.Schema.Types.ObjectId, ref: "Room" },
+    teacher: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    reason: {
+      type: String,
+      enum: ["extra", "cancel", "reschedule"],
+      default: "extra",
+    },
+  },
+  { _id: false }
+);
 
 const classSchema = new mongoose.Schema({
   name: {
     type: String,
-    require: true,
+    required: true,
+  },
+  classCode: {
+    type: String,
+    required: true,
     unique: true,
+    index: true,
   },
   course: {
     type: mongoose.Schema.ObjectId,
     ref: "Course",
   },
   progress: String,
-  schedules: [Date],
-  start: String,
-  end: String,
+  weeklySchedules: [weeklySlotSchema],
+  // Buổi phát sinh theo ngày cụ thể (bù/huỷ/đổi)
+  oneOffSchedules: [oneOffScheduleSchema],
+  startAt: {
+    type: Date,
+    index: true,
+  },
+  endAt: {
+    type: Date,
+    index: true,
+  },
+  student: {
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: "Student",
+  },
+  reservedCount: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
   minStudent: Number,
   maxStudent: Number,
-  learningMaterial: String,
+  learningMaterial: [
+    {
+      title: String,
+      content: String,
+      createAt: {
+        type: Date,
+        default: Date.now(),
+      },
+    },
+  ],
+  // Ưu tiên GV chính (nếu có)
+  preferredTeacher: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+  },
+  scheduleSignature: {
+    type: String,
+    unique: true,
+    sparse: true,
+  },
+  createdByJob: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "ScheduleJob",
+    index: true,
+  },
+  status: {
+    type: String,
+    enum: ["approved", "archived", "canceled"],
+    default: "approved",
+    index: true,
+  },
+});
+classSchema.virtual("currentSize").get(function () {
+  const confirmed = this.student ? this.student.length : 0;
+  const reserved = this.reservedCount || 0;
+  return confirmed + reserved;
+});
+
+classSchema.pre("save", function (next) {
+  if (!this.classCode) this.classCode = buildClassCode();
+  next();
 });
 const Class = mongoose.model("Class", classSchema, "classes");
 

@@ -1,18 +1,34 @@
 const mongoose = require("mongoose");
 
 const attendanceSchema = new mongoose.Schema({
-  class: {
-    type: mongoose.Schema.ObjectId,
-    ref: "Class",
+  session: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Session",
+    required: true,
+    unique: true,
   },
-  schedule: String,
-  student: {
-    type: [mongoose.Schema.ObjectId],
-    ref: "User",
+  status: {
+    type: String,
+    enum: ["in-progress", "closed"],
+    default: "in-progress",
   },
-  status: String,
-  note: String,
+  attendance: [
+    {
+      student: {
+        type: mongoose.Schema.ObjectId,
+        ref: "Student",
+      },
+      status: { type: String, enum: ["present", "absent"], default: "absent" },
+      note: String,
+    },
+  ],
 });
+
+attendanceSchema.pre(/^find/, function (next) {
+  this.populate("attendance.student");
+  next();
+});
+
 const Attendance = mongoose.model(
   "Attendance",
   attendanceSchema,

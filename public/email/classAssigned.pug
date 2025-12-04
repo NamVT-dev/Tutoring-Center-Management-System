@@ -1,0 +1,33 @@
+extends baseEmail
+
+block content
+  p Chào thầy/cô <strong>#{teacherName}</strong>,
+  
+  p Trung tâm trân trọng mời thầy/cô giảng dạy lớp học mới với thông tin chi tiết dưới đây:
+  
+  h3(style="color: #2c3e50;") THÔNG TIN LỚP HỌC
+  
+  table(style="width:100%; border-collapse: collapse; margin-bottom: 20px;")
+    tr
+      td(style="padding: 8px; border-bottom: 1px solid #ddd; width: 150px;") <strong>Tên lớp:</strong>
+      td(style="padding: 8px; border-bottom: 1px solid #ddd;") #{className}
+    tr
+      td(style="padding: 8px; border-bottom: 1px solid #ddd;") <strong>Mã lớp:</strong>
+      td(style="padding: 8px; border-bottom: 1px solid #ddd;") #{classCode}
+    tr
+      td(style="padding: 8px; border-bottom: 1px solid #ddd;") <strong>Thời gian:</strong>
+      td(style="padding: 8px; border-bottom: 1px solid #ddd;") 
+        | Bắt đầu: #{startDate} <br>
+        | Kết thúc: #{endDate}
+    tr
+      td(style="padding: 8px; border-bottom: 1px solid #ddd;") <strong>Lịch học:</strong>
+      td(style="padding: 8px; border-bottom: 1px solid #ddd;")
+        each slot in schedules
+          div #{slot}
+
+  div(style="background-color: #f9f9f9; padding: 15px; border-left: 4px solid #4CAF50; margin-top: 20px;")
+    p(style="margin: 0; font-weight: bold;") YÊU CẦU XÁC NHẬN:
+    p(style="margin: 5px 0 0 0;") Vui lòng kiểm tra lịch trình cá nhân và <strong>Reply (Trả lời) lại email này</strong> với nội dung "XÁC NHẬN" hoặc "TỪ CHỐI" trong vòng 24h.
+
+  p Trân trọng,
+  p Đội ngũ Đào tạo.

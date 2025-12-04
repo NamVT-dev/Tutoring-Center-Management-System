@@ -1,5 +1,33 @@
 const express = require("express");
-
+const authRoutes = require("./authRoutes");
+const adminRoutes = require("./adminRoutes");
+const staffRoutes = require("./staffRoutes");
+const teacherRoutes = require("./teacherRoutes");
+const testRoutes = require("./testRoutes");
+const categoryRoutes = require("./categoryRoutes");
+const memberRoutes = require("./memberRoutes");
+const scheduleRoutes = require("./scheduleRoutes");
+const attendanceRoutes = require("./attendanceRoutes");
+const notificationRoutes = require("./notificationRoutes");
+const paymentRoutes = require("./paymentRoutes");
+const substituteRoutes = require("./substituteRequestRoute");
+const complainRoutes = require("./complainRoutes");
+const aiRoutes = require("./aiRoutes");
 const route = express.Router();
+
+route.use("/auth", authRoutes);
+route.use("/admin", adminRoutes);
+route.use("/staff", staffRoutes);
+route.use("/teacher", teacherRoutes);
+route.use("/test", testRoutes);
+route.use("/categories", categoryRoutes);
+route.use("/schedule", scheduleRoutes);
+route.use("/attendance", attendanceRoutes);
+route.use("/notification", notificationRoutes);
+route.use("/payment", paymentRoutes);
+route.use("/substitute", substituteRoutes);
+route.use("/complain", complainRoutes);
+route.use("/ai", aiRoutes);
+route.use("/", memberRoutes);
 
 module.exports = route;

@@ -1,13 +1,33 @@
 const mongoose = require("mongoose");
 const validator = require("validator");
+const bcrypt = require("bcryptjs");
+const crypto = require("node:crypto");
+
+const { generateRandomPin } = require("../utils/passwordUtils");
+const { LEVEL_ORDER } = require("../utils/levels");
+
+const availabilitySchema = new mongoose.Schema(
+  {
+    // 0=CN ... 6=Thứ 7
+    // 0=00h00 ... 1439=23x60 + 59
+    dayOfWeek: { type: Number, min: 0, max: 6, required: true },
+    shifts: [
+      {
+        type: String,
+        // enum: ["S1", "S2", "S3","S4", "S5", "S6"],
+        // required: true,
+      },
+    ],
+    effective: {
+      start: Date,
+      end: Date,
+    },
+  },
+  { _id: false }
+);
 
 const userSchema = new mongoose.Schema(
   {
-    username: {
-      type: String,
-      unique: true,
-      required: [true, "Xin hãy cung cấp tên tài khoản"],
-    },
     email: {
       type: String,
       required: [true, "Xin hãy cung cấp email của bạn"],
@@ -16,6 +36,10 @@ const userSchema = new mongoose.Schema(
       validate: [validator.isEmail, "Email không hợp lệ"],
     },
     profile: {
+      fullname: {
+        type: String,
+        required: [true, "Xin hãy cung cấp tên của bạn"],
+      },
       photo: {
         type: String,
         default:
@@ -36,26 +60,10 @@ const userSchema = new mongoose.Schema(
         enum: ["male", "female"],
       },
     },
-    student: {
-      type: [mongoose.Schema.ObjectId],
-      ref: "User",
-    },
     role: {
       type: String,
-      enum: ["student", "admin", "teacher", "parent"],
-      default: "student",
-    },
-    class: {
-      type: [String],
-    },
-    level: {
-      type: String,
-    },
-    salary: {
-      type: [String],
-    },
-    avaiable: {
-      type: String,
+      enum: ["admin", "teacher", "member", "staff"],
+      default: "member",
     },
     password: {
       type: String,
@@ -80,7 +88,10 @@ const userSchema = new mongoose.Schema(
     passwordChangedAt: Date,
     passwordResetToken: String,
     passwordResetExpires: Date,
-    confirmPin: String,
+    confirmPin: {
+      type: String,
+      select: false,
+    },
     confirmPinExpires: Date,
     active: {
       type: Boolean,
@@ -90,8 +101,141 @@ const userSchema = new mongoose.Schema(
       type: String,
     },
   },
-  { timestamps: true }
+  {
+    discriminatorKey: "role",
+    collection: "users",
+    timestamps: true,
+  }
 );
+
+userSchema.index({ role: 1 });
+
+userSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
+
+  this.password = await bcrypt.hash(this.password, 12);
+
+  this.passwordConfirm = undefined;
+  next();
+});
+
+userSchema.pre("save", function (next) {
+  if (!this.isModified("password") || this.isNew) return next();
+
+  this.passwordChangedAt = Date.now() - 1000;
+  next();
+});
+
+userSchema.methods.correctPassword = async function (
+  candidatePassword,
+  userPassword
+) {
+  return await bcrypt.compare(candidatePassword, userPassword);
+};
+
+userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
+  if (this.passwordChangedAt) {
+    const changedTimestamp = parseInt(
+      this.passwordChangedAt.getTime() / 1000,
+      10
+    );
+
+    return JWTTimestamp < changedTimestamp;
+  }
+
+  // False means NOT changed
+  return false;
+};
+
+userSchema.methods.createConfirmPin = function () {
+  const confirmPin = generateRandomPin(6);
+  this.confirmPin = crypto
+    .createHash("sha256")
+    .update(confirmPin)
+    .digest("hex");
+
+  this.confirmPinExpires = Date.now() + 10 * 60 * 1000;
+
+  console.log(confirmPin);
+  return confirmPin;
+};
+
+userSchema.methods.confirmEmail = function (pin) {
+  const hashedPin = crypto.createHash("sha256").update(pin).digest("hex");
+
+  if (hashedPin !== this.confirmPin || Date.now() > this.confirmPinExpires)
+    return false;
+
+  this.active = true;
+  this.confirmPin = undefined;
+  this.confirmPinExpires = undefined;
+
+  return true;
+};
+
+userSchema.methods.createPasswordResetToken = function () {
+  const resetToken = crypto.randomBytes(32).toString("hex");
+
+  this.passwordResetToken = crypto
+    .createHash("sha256")
+    .update(resetToken)
+    .digest("hex");
+
+  this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
+
+  return resetToken;
+};
 const User = mongoose.model("User", userSchema, "users");
 
-module.exports = User;
+exports.User = User;
+const skillSchema = new mongoose.Schema(
+  {
+    category: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Category",
+      required: true,
+    },
+
+    levels: [
+      {
+        type: String,
+        trim: true,
+        enum: LEVEL_ORDER,
+      },
+    ],
+    includeLowerLevels: { type: Boolean, default: false },
+    anyLevel: { type: Boolean, default: false },
+  },
+  { _id: false }
+);
+const teacherSchema = new mongoose.Schema({
+  class: {
+    type: [mongoose.Schema.ObjectId],
+    ref: "Class",
+  },
+  availability: [availabilitySchema],
+  maxHoursPerDay: Number,
+  maxHoursPerWeek: Number,
+  salary: {
+    type: [String],
+  },
+  teachCategories: {
+    type: [mongoose.Schema.ObjectId],
+    ref: "Category",
+  },
+  skills: { type: [skillSchema], default: [] },
+});
+
+exports.Teacher = User.discriminator("teacher", teacherSchema);
+
+const memberSchema = new mongoose.Schema({
+  student: {
+    type: [mongoose.Schema.ObjectId],
+    ref: "Student",
+  },
+});
+
+exports.Member = User.discriminator("member", memberSchema);
+
+const staffSchema = new mongoose.Schema();
+exports.Staff = User.discriminator("staff", staffSchema);

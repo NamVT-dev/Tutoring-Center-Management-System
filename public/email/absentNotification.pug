@@ -1,0 +1,10 @@
+extends baseEmail
+
+block content
+  h1 Xin chào #{studentName},
+  p Hệ thống xin thông báo rằng bạn đã được ghi nhận là vắng mặt trong buổi học:
+  ul
+    li Lớp: #{className}
+    li Thời gian: #{date}
+  p Nếu có sự nhầm lẫn hoặc bạn có lý do chính đáng, vui lòng liên hệ giáo viên hoặc quản trị viên để được hỗ trợ.
+  p Cảm ơn bạn đã quan tâm và tuân thủ quy định điểm danh của trung tâm!

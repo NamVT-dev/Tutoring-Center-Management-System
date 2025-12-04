@@ -1,0 +1,23 @@
+extends baseEmail
+
+block content
+  p Chào #{firstName} (Phụ huynh của học viên #{studentName}),
+  
+  p Chúc mừng bạn đã đăng ký thành công lớp <strong>#{classInfo.name}</strong>.
+  
+  h3 Chi tiết hóa đơn:
+  table(style="width:100%; border-collapse: collapse;")
+    tr
+      td(style="padding: 8px; border: 1px solid #ddd;") Mã giao dịch:
+      td(style="padding: 8px; border: 1px solid #ddd;") <strong>#{enrollment.invoiceId}</strong>
+    tr
+      td(style="padding: 8px; border: 1px solid #ddd;") Số tiền đã thanh toán:
+      td(style="padding: 8px; border: 1px solid #ddd;") <strong>#{enrollment.amount.toLocaleString('vi-VN')} VND</strong>
+    tr
+      td(style="padding: 8px; border: 1px solid #ddd;") Ngày khai giảng:
+      td(style="padding: 8px; border: 1px solid #ddd;") <strong>#{new Date(classInfo.startAt).toLocaleDateString('vi-VN')}</strong>
+
+  p(style="margin-top: 20px;") Hẹn gặp bạn tại buổi học đầu tiên!
+  
+  a(href=`https://your-website.com/my-classes`, target="_blank", style="background-color: #008CBA; color: white; padding: 14px 25px; text-align: center; text-decoration: none; display: inline-block; border-radius: 5px; margin-top: 10px;")
+    | Xem các lớp học của tôi

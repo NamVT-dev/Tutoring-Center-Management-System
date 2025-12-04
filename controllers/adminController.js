@@ -1,0 +1,159 @@
+const catchAsync = require("../utils/catchAsync");
+const AppError = require("../utils/appError");
+const { buildPaginatedQuery } = require("../utils/queryHelper");
+const { User, Teacher } = require("../models/userModel");
+const { generateRandomPassword } = require("../utils/passwordUtils");
+const Email = require("../utils/email");
+const factory = require("./handlerFactory");
+
+const getListTeacher = catchAsync(async (req, res) => {
+  const { status, page = 1, limit = 10 } = req.query;
+  const filters = { role: "teacher" };
+  if (status) {
+    if (status === "active" || status === "true") {
+      filters.active = true;
+    } else if (status === "inactive" || status === "false") {
+      filters.active = false;
+    }
+  }
+  const { finalQuery, paginationOptions } = buildPaginatedQuery({
+    query: req.query,
+    filters,
+    searchFields: ["profile.fullname", "email", "level"],
+    page,
+    limit,
+    select: "username email active profile level skills",
+    sort: "-createdAt _id",
+  });
+
+  const [total, teachers] = await Promise.all([
+    Teacher.countDocuments(finalQuery),
+    Teacher.find(finalQuery)
+      .skip(paginationOptions.skip)
+      .limit(paginationOptions.limit)
+      .select(paginationOptions.select)
+      .sort(paginationOptions.sort)
+      .lean(),
+  ]);
+  res.status(200).json({
+    status: "success",
+    results: teachers.length,
+    total,
+    page: Number(page),
+    totalPages: Math.ceil(total / limit),
+    data: { teachers },
+  });
+});
+
+const getTeacherDetail = catchAsync(async (req, res, next) => {
+  const teacher = await Teacher.findOne({ _id: req.params.id })
+    .select("-password -confirmPin -passwordResetToken -student")
+    .populate({
+      path: "skills.category",
+    })
+    .lean();
+
+  if (!teacher) return next(new AppError("Không tìm được giáo viên!", 404));
+
+  res.status(200).json({
+    status: "success",
+    data: { teacher },
+  });
+});
+
+const createTeacher = catchAsync(async (req, res) => {
+  const { email, name, dob, phoneNumber, gender } = req.body;
+  const tempPassword = generateRandomPassword();
+  const teacher = await User.create({
+    email,
+    profile: {
+      fullname: name,
+      dob,
+      phoneNumber,
+      gender,
+    },
+    role: "teacher",
+    password: tempPassword,
+    passwordConfirm: tempPassword,
+    active: true,
+  });
+
+  console.log(`Teacher created - Email: ${email},Password: ${tempPassword}`);
+
+  try {
+    await new Email(teacher, {
+      email: teacher.email,
+      password: tempPassword,
+    }).sendTeacherWelcome();
+  } catch (err) {
+    console.error("Gửi email thất bại:", err);
+  }
+
+  const plainData = teacher.toObject();
+  delete plainData.password;
+
+  res.status(201).json({
+    status: "success",
+    data: plainData,
+  });
+});
+
+const updateTeacher = catchAsync(async (req, res, next) => {
+  const teacher = await Teacher.findById(req.params.id);
+  if (!teacher) return next(new AppError("Không tìm thấy giáo viên", 404));
+  if (req.file) req.body.profile["photo"] = req.file.filename;
+
+  // 3) Update user document
+  const updatedTeacher = await Teacher.findByIdAndUpdate(
+    req.params.id,
+    req.body,
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
+
+  res.status(200).json({
+    status: "success",
+    data: {
+      user: updatedTeacher,
+    },
+  });
+});
+const deleteTeacher = factory.deleteOne(Teacher);
+
+const accountFilterForStaff = (req, res, next) => {
+  if (
+    req.query.role &&
+    (req.query.role === "member" || req.query.role === "teacher")
+  )
+    return next();
+  req.query.role = ["member", "teacher"];
+  next();
+};
+const getAllUserAccount = factory.getAll(User, [
+  "profile.fullname",
+  "email",
+  "profile.phoneNumber",
+]);
+const getOneUserAccount = catchAsync(async (req, res, next) => {
+  const account = await User.findById(req.params.id).populate("student");
+  if (!account || !["member", "teacher"].includes(account.role)) {
+    return next(new AppError("Không tìm thấy người dùng", 404));
+  }
+  res.status(200).json({
+    status: "success",
+    data: account,
+  });
+});
+
+module.exports = {
+  getListTeacher,
+  getTeacherDetail,
+  createTeacher,
+  updateTeacher,
+  deleteTeacher,
+  accountFilterForStaff,
+  getAllUserAccount,
+  getOneUserAccount,
+};
