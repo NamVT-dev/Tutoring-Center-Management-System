@@ -18,7 +18,9 @@ exports.aiResponse = async (question, fact) => {
       {
         role: "system",
         content:
-          "Bạn là người tư vấn cho trung tâm học thêm tiếng anh, hãy trả lời khách hàng về các thông tin trong hệ thống đã được cung cấp. Hãy trả lời câu hỏi bằng tiếng Việt",
+          "You are a assistant in a English Tutor Center, please help and guide user with given data in Vietnamese \n" +
+          "Notice: - S1 shift start at 08:00 \n" +
+          "- The user is not familiar with technical or specialized terminology. Explain things using simple, clear, everyday language.",
       },
       {
         role: "assistant",
@@ -36,9 +38,10 @@ exports.aiResponse = async (question, fact) => {
 
 exports.buildFacts = (retrieved) => {
   const facts = [];
-  const { center, course } = retrieved;
+  const { center, course, teacher } = retrieved;
   center.forEach((c) => facts.push(this.generateCenterConfigEmbedding(c)));
   course.forEach((c) => facts.push(this.generateCourseEmbeddingText(c)));
+  teacher.forEach((t) => facts.push(this.generateTeacherEmbeddingText(t)));
   return facts.join("\n");
 };
 
@@ -120,4 +123,43 @@ Input Score Range: ${course.inputMinScore} to ${course.inputMaxScore}.
   `.trim();
 
   return text;
+};
+
+exports.generateTeacherEmbeddingText = (teacher) => {
+  if (!teacher) return "";
+
+  const name = teacher.profile?.fullname || "";
+  const overallLevel = teacher.level || "";
+  const description = teacher.description || "";
+
+  // Count number of classes taught
+  const classCount = Array.isArray(teacher.class) ? teacher.class.length : 0;
+
+  // Teaching Skills
+  const skillsText = (teacher.skills || [])
+    .map((s) => {
+      const cat = s.category?.toString() || "";
+      const levels = s.levels?.join(", ") || "";
+      const includeLower = s.includeLowerLevels ? "yes" : "no";
+
+      return `Category: ${cat}; Levels: ${levels}; Includes lower levels: ${includeLower}`;
+    })
+    .join(" | ");
+
+  // Teach categories if available
+  const teachCategories = (teacher.teachCategories || [])
+    .map((c) => c.toString())
+    .join(", ");
+
+  return (
+    `Teacher Name: ${name}\n` +
+    `Overall Level: ${overallLevel}\n\n` +
+    `Teaching Description:\n${description}\n\n` +
+    `Teaching Skills:\n${skillsText || "None"}\n\n` +
+    `Teaching Experience:\n` +
+    `- Number of classes taught: ${classCount}\n\n` +
+    `Specialization:\n` +
+    `${description}\n\n` +
+    `Teach Categories:\n${teachCategories || "None"}`
+  );
 };

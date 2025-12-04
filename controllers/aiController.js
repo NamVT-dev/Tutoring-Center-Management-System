@@ -1,18 +1,20 @@
 const Center = require("../models/centerModel");
 const Course = require("../models/courseModel");
+const { Teacher, User } = require("../models/userModel");
 const catchAsync = require("../utils/catchAsync");
 const {
   embedText,
   aiTranslate,
-  generateCenterConfigEmbedding,
+  // generateCenterConfigEmbedding,
   generateCourseEmbeddingText,
   buildFacts,
   aiResponse,
+  generateTeacherEmbeddingText,
 } = require("../utils/openAi");
 
 exports.embeddingAllRequireData = catchAsync(async (req, res) => {
-  await saveEmbedding(Center, generateCenterConfigEmbedding, "");
   await saveEmbedding(Course, generateCourseEmbeddingText, "category");
+  await saveEmbedding(Teacher, generateTeacherEmbeddingText);
 
   res.status(200).json({
     status: "success",
@@ -45,33 +47,6 @@ exports.chatAi = catchAsync(async (req, res) => {
 });
 
 const findFact = async (queryVector) => {
-  const center = await Center.aggregate([
-    {
-      $vectorSearch: {
-        index: "default",
-        queryVector,
-        path: "embedding",
-        exact: true,
-        limit: 5,
-      },
-    },
-    {
-      $project: {
-        _id: 0,
-        shifts: 1,
-        dayShifts: 1,
-        key: 1,
-        timezone: 1,
-        isScheduling: 1,
-        isAvailabilityOpen: 1,
-        activeDaysOfWeek: 1,
-        score: {
-          $meta: "vectorSearchScore",
-        },
-      },
-    },
-  ]);
-
   const course = await Course.aggregate([
     {
       $vectorSearch: {
@@ -113,5 +88,34 @@ const findFact = async (queryVector) => {
       },
     },
   ]);
-  return { course, center };
+
+  const teacher = await User.aggregate([
+    {
+      $vectorSearch: {
+        index: "default",
+        queryVector,
+        path: "embedding",
+        exact: true,
+        limit: 5,
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        profile: 1,
+        level: 1,
+        description: 1,
+        class: 1,
+        skills: 1,
+        teachCategories: 1,
+        score: {
+          $meta: "vectorSearchScore",
+        },
+      },
+    },
+  ]);
+
+  const center = await Center.find();
+
+  return { course, center, teacher };
 };

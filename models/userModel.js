@@ -224,6 +224,7 @@ const teacherSchema = new mongoose.Schema({
     ref: "Category",
   },
   skills: { type: [skillSchema], default: [] },
+  embedding: [Number],
 });
 
 exports.Teacher = User.discriminator("teacher", teacherSchema);
