@@ -56,7 +56,7 @@ app.post(
     const student = await Student.findById(studentId).populate("user category");
     const categoryName = student.category[0].name;
     const score =
-      categoryName === "IELTS" ? (testScore / 20) * 9 : (testScore / 20) * 990;
+      categoryName === "IELTS" ? (testScore / 12) * 9 : (testScore / 12) * 990;
     const roundedScore =
       categoryName === "IELTS"
         ? 0.5 * Math.round(2 * score)
