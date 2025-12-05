@@ -60,7 +60,7 @@ app.post(
     const roundedScore =
       categoryName === "IELTS"
         ? 0.5 * Math.round(2 * score)
-        : 0.2 * Math.round(5 * score);
+        : 5 * Math.round(score / 5);
     if (!student) return next(new AppError("Không tìm thấy học viên", 404));
     student.testScore = roundedScore;
     student.testResultAt = Date.now();
