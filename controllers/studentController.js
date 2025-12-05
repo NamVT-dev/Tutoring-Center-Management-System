@@ -297,6 +297,9 @@ exports.createSeatHold = catchAsync(async (req, res, next) => {
     return next(new AppError("Vui lòng cung cấp studentId và classId", 400));
   }
 
+  if (!req.user.student.includes(student))
+    return next(new AppError("Học viên không thuộc người dùng", 400));
+
   const session = await mongoose.startSession();
   session.startTransaction();
 
