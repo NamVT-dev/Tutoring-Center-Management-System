@@ -50,7 +50,7 @@ exports.handlePayment = catchAsync(async (req, res) => {
     }
 
     if (!verify.isSuccess) {
-      enrollment.status = "cancel";
+      enrollment.status = "canceled";
       enrollment.save();
       throw new AppError("Thanh toán thất bại", 400);
     }
