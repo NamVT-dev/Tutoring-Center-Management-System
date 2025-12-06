@@ -261,7 +261,7 @@ exports.createCustomSchedule = catchAsync(async (req, res, next) => {
   const newRequest = await CustomScheduleRequest.create({
     student: studentId,
     category,
-    courseId,
+    course: courseId,
     preferredDays,
     preferredShifts,
     note,
