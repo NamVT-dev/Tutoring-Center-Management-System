@@ -16,9 +16,9 @@ const IELTS_RANGE = {
   Elementary: [4.0, 4.5],
   "Pre-Intermediate": [4.5, 5.0],
   Intermediate: [5.0, 5.5],
-  "Upper-Intermediate": [6.0, 6.5],
-  Advanced: [7.0, 7.5],
-  Expert: [8.0, 9.0],
+  "Upper-Intermediate": [5.5, 6.5],
+  Advanced: [6.5, 7.5],
+  Expert: [7.5, 9.0],
 };
 
 const TOEIC_RANGE = {
