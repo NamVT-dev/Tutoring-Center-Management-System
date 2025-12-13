@@ -3,11 +3,10 @@ const AppError = require("../utils/appError");
 const CustomScheduleRequest = require("../models/customScheduleRequestModel");
 const Student = require("../models/studentModel");
 const Course = require("../models/courseModel");
-const Category = require("../models/categoryModel");
 const factory = require("./handlerFactory");
 const APIFeatures = require("../utils/apiFeatures");
 
-exports.getAllCustomRequests = catchAsync(async (req, res, next) => {
+exports.getAllCustomRequests = catchAsync(async (req, res) => {
   const features = new APIFeatures(CustomScheduleRequest.find(), req.query)
     .filter()
     .sort()
@@ -80,11 +79,9 @@ exports.updateCustomRequest = catchAsync(async (req, res, next) => {
   });
 });
 exports.deleteOneCustomRequest = factory.deleteOne(CustomScheduleRequest);
-exports.getCustomRequestSummary = catchAsync(async (req, res, next) => {
+exports.getCustomRequestSummary = catchAsync(async (req, res) => {
   const aggregationPipeline = [
     { $match: { status: "open" } },
-    { $unwind: "$preferredDays" },
-    { $unwind: "$preferredShifts" },
     {
       $group: {
         _id: {
@@ -92,8 +89,6 @@ exports.getCustomRequestSummary = catchAsync(async (req, res, next) => {
           targetType: {
             $cond: { if: "$course", then: "Course", else: "Category" },
           },
-          day: "$preferredDays",
-          shift: "$preferredShifts",
         },
         studentIds: { $addToSet: "$student" },
       },
@@ -103,8 +98,6 @@ exports.getCustomRequestSummary = catchAsync(async (req, res, next) => {
         _id: 0,
         targetId: "$_id.targetId",
         targetType: "$_id.targetType",
-        dayOfWeek: "$_id.day",
-        shift: "$_id.shift",
         studentCount: { $size: "$studentIds" },
         students: "$studentIds",
       },
@@ -121,9 +114,6 @@ exports.getCustomRequestSummary = catchAsync(async (req, res, next) => {
   });
 
   const courseTargets = summary.filter((item) => item.targetType === "Course");
-  const categoryTargets = summary.filter(
-    (item) => item.targetType === "Category"
-  );
 
   if (courseTargets.length > 0) {
     await Course.populate(courseTargets, {
@@ -131,14 +121,8 @@ exports.getCustomRequestSummary = catchAsync(async (req, res, next) => {
       select: "name level",
     });
   }
-  if (categoryTargets.length > 0) {
-    await Category.populate(categoryTargets, {
-      path: "targetId",
-      select: "name",
-    });
-  }
 
-  const finalResult = [...courseTargets, ...categoryTargets].map((item) => {
+  const finalResult = courseTargets.map((item) => {
     item.targetInfo = item.targetId;
     delete item.targetId;
     return item;

@@ -49,7 +49,12 @@ const userSchema = new mongoose.Schema(
         type: String,
         unique: true,
         required: [true, "Xin hãy cung cấp số điện thoại của bạn"],
-        validate: [validator.isMobilePhone, "Số điện thoại không hợp lệ"],
+        validate: {
+          validator: function (val) {
+            return validator.isMobilePhone(val, "vi-VN");
+          },
+          message: "Số điện thoại không hợp lệ",
+        },
       },
       dob: {
         type: Date,
@@ -224,6 +229,7 @@ const teacherSchema = new mongoose.Schema({
     ref: "Category",
   },
   skills: { type: [skillSchema], default: [] },
+  embedding: { type: [Number], select: false },
 });
 
 exports.Teacher = User.discriminator("teacher", teacherSchema);

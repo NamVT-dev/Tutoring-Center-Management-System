@@ -116,7 +116,7 @@ exports.finalizeSchedule = catchAsync(async (req, res, next) => {
   }
 });
 
-exports.getScheduleAnalytics = catchAsync(async (req, res, next) => {
+exports.getScheduleAnalytics = catchAsync(async (req, res) => {
   // 1. Thống kê lý do thất bại
   const failureReasons = await ScheduleJob.aggregate([
     { $match: { status: "completed" } },
@@ -164,7 +164,7 @@ exports.getScheduleJob = catchAsync(async (req, res, next) => {
   res.status(200).json({ status: "success", data: job });
 });
 
-exports.getAllScheduleJobs = catchAsync(async (req, res, next) => {
+exports.getAllScheduleJobs = catchAsync(async (req, res) => {
   // Lấy lịch sử 20 job gần nhất
   const jobs = await ScheduleJob.find({ admin: req.user.id })
     .sort("-createdAt")
@@ -173,7 +173,7 @@ exports.getAllScheduleJobs = catchAsync(async (req, res, next) => {
   res.status(200).json({ status: "success", results: jobs.length, data: jobs });
 });
 
-exports.getSchedulerStatus = catchAsync(async (req, res, next) => {
+exports.getSchedulerStatus = catchAsync(async (req, res) => {
   const center = await Center.findOne({ key: "default" }).select(
     "isScheduling"
   );

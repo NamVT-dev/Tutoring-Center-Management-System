@@ -261,7 +261,7 @@ exports.createCustomSchedule = catchAsync(async (req, res, next) => {
   const newRequest = await CustomScheduleRequest.create({
     student: studentId,
     category,
-    courseId,
+    course: courseId,
     preferredDays,
     preferredShifts,
     note,
@@ -296,6 +296,9 @@ exports.createSeatHold = catchAsync(async (req, res, next) => {
   if (!student || !classId) {
     return next(new AppError("Vui lòng cung cấp studentId và classId", 400));
   }
+
+  if (!req.user.student.includes(student))
+    return next(new AppError("Học viên không thuộc người dùng", 400));
 
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -370,7 +373,7 @@ exports.createSeatHold = catchAsync(async (req, res, next) => {
       checkoutUrl,
     };
 
-    notifyHoldCreated(student, newEnrollment);
+    notifyHoldCreated(student, newEnrollment, checkoutUrl);
 
     res.status(201).json({
       status: "success",

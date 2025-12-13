@@ -16,11 +16,17 @@ exports.getTodaySession = catchAsync(async (req, res) => {
       $gte: start,
       $lte: end,
     },
-  }).populate("class room");
+  })
+    .populate("class room")
+    .lean();
+
+  const filteredSessions = sessions.filter(
+    (s) => s.class.status !== "canceled"
+  );
 
   res.status(201).json({
     status: "success",
-    data: sessions,
+    data: filteredSessions,
   });
 });
 
@@ -28,6 +34,8 @@ exports.startSession = catchAsync(async (req, res, next) => {
   const session = await Session.findById(req.params.id).populate("class");
   if (!session || session.teacher.id.toString() !== req.user.id)
     return next(new AppError("Không tìm thấy session", 404));
+  if (session.class.status === "canceled")
+    return next(new AppError("Lớp học đã bị hủy", 400));
   let attendance = await Attendance.findOne({ session: session.id });
   if (!attendance) {
     attendance = await Attendance.create({

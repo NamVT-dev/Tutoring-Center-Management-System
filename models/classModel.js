@@ -35,7 +35,6 @@ const classSchema = new mongoose.Schema({
   },
   classCode: {
     type: String,
-    required: true,
     unique: true,
     index: true,
   },

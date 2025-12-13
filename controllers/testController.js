@@ -5,7 +5,6 @@ const { Member } = require("../models/userModel");
 const Category = require("../models/categoryModel");
 const Student = require("../models/studentModel");
 const Email = require("../utils/email");
-const createCsvWriter = require("csv-writer").createObjectCsvWriter;
 
 const csvFilePath = path.join(__dirname, "..", "public", "results.csv");
 
@@ -37,6 +36,7 @@ exports.registerTest = catchAsync(async (req, res, next) => {
   try {
     await new Email(req.user, {
       studentId: student.id,
+      studentName: student.name,
       categoryName: category.name,
       dob,
       linkTest:
@@ -45,7 +45,6 @@ exports.registerTest = catchAsync(async (req, res, next) => {
     }).sendTestRegisterSuccess();
     /*eslint-disable-next-line*/
   } catch (error) {
-    console.log(error);
     return next(new AppError("Có lỗi khi gửi email. Hãy thử lại sau!"), 500);
   }
 

@@ -54,13 +54,15 @@ app.post(
   catchAsync(async (req, res, next) => {
     const { studentId, testScore } = req.body;
     const student = await Student.findById(studentId).populate("user category");
+    if (student.testScore)
+      return res.status(200).json({ message: "Học viên đã có điểm" });
     const categoryName = student.category[0].name;
     const score =
-      categoryName === "IELTS" ? (testScore / 20) * 9 : (testScore / 20) * 990;
+      categoryName === "IELTS" ? (testScore / 12) * 9 : (testScore / 12) * 990;
     const roundedScore =
       categoryName === "IELTS"
         ? 0.5 * Math.round(2 * score)
-        : 0.2 * Math.round(5 * score);
+        : 5 * Math.round(score / 5);
     if (!student) return next(new AppError("Không tìm thấy học viên", 404));
     student.testScore = roundedScore;
     student.testResultAt = Date.now();

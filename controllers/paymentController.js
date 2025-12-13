@@ -50,8 +50,8 @@ exports.handlePayment = catchAsync(async (req, res) => {
     }
 
     if (!verify.isSuccess) {
-      enrollment.status = "cancel";
-      enrollment.save();
+      enrollment.status = "canceled";
+      await enrollment.save({ session });
       throw new AppError("Thanh toán thất bại", 400);
     }
 
