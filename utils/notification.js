@@ -24,15 +24,7 @@ const getContactInfo = async (studentId) => {
   }
 };
 
-const sendSMS = async (phone, message) => {
-  try {
-    console.log(`[SMS SIMULATION] To: ${phone} | Message: ${message}`);
-  } catch (error) {
-    console.error(`Error sending SMS: ${error.message}`);
-  }
-};
-
-exports.notifyHoldCreated = async (studentId, enrollment) => {
+exports.notifyHoldCreated = async (studentId, enrollment, paymentLink) => {
   const contact = await getContactInfo(studentId);
   const classInfo = await enrollment.populate(
     "class",
@@ -44,6 +36,7 @@ exports.notifyHoldCreated = async (studentId, enrollment) => {
     classInfo: classInfo.class,
     enrollment: classInfo,
     studentName: contact.studentName,
+    paymentLink,
   };
   const subject = `Giữ chỗ thành công cho học viên ${contact.studentName} - Lớp ${data.enrollment.class.name}.Thời hạn: ${data.enrollment.holdExpiresAt}. Vui lòng thanh toán.`;
 

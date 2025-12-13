@@ -3,7 +3,6 @@ const AppError = require("../utils/appError");
 const CustomScheduleRequest = require("../models/customScheduleRequestModel");
 const Student = require("../models/studentModel");
 const Course = require("../models/courseModel");
-const Category = require("../models/categoryModel");
 const factory = require("./handlerFactory");
 const APIFeatures = require("../utils/apiFeatures");
 
@@ -115,9 +114,6 @@ exports.getCustomRequestSummary = catchAsync(async (req, res) => {
   });
 
   const courseTargets = summary.filter((item) => item.targetType === "Course");
-  const categoryTargets = summary.filter(
-    (item) => item.targetType === "Category"
-  );
 
   if (courseTargets.length > 0) {
     await Course.populate(courseTargets, {
@@ -125,14 +121,8 @@ exports.getCustomRequestSummary = catchAsync(async (req, res) => {
       select: "name level",
     });
   }
-  if (categoryTargets.length > 0) {
-    await Category.populate(categoryTargets, {
-      path: "targetId",
-      select: "name",
-    });
-  }
 
-  const finalResult = [...courseTargets, ...categoryTargets].map((item) => {
+  const finalResult = courseTargets.map((item) => {
     item.targetInfo = item.targetId;
     delete item.targetId;
     return item;

@@ -36,6 +36,7 @@ exports.registerTest = catchAsync(async (req, res, next) => {
   try {
     await new Email(req.user, {
       studentId: student.id,
+      studentName: student.name,
       categoryName: category.name,
       dob,
       linkTest:

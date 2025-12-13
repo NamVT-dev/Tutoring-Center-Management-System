@@ -40,8 +40,8 @@ const courseSchema = new mongoose.Schema({
     default: 15,
   },
 
-  inputMinScore: { type: Number, default: null },
-  inputMaxScore: { type: Number, default: null },
+  inputMinScore: { type: Number, default: 0 },
+  inputMaxScore: { type: Number, default: 0 },
   imageCover: String,
   embedding: {
     type: [Number],

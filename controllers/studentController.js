@@ -373,7 +373,7 @@ exports.createSeatHold = catchAsync(async (req, res, next) => {
       checkoutUrl,
     };
 
-    notifyHoldCreated(student, newEnrollment);
+    notifyHoldCreated(student, newEnrollment, checkoutUrl);
 
     res.status(201).json({
       status: "success",

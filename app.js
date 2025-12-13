@@ -54,6 +54,8 @@ app.post(
   catchAsync(async (req, res, next) => {
     const { studentId, testScore } = req.body;
     const student = await Student.findById(studentId).populate("user category");
+    if (student.testScore)
+      return res.status(200).json({ message: "Học viên đã có điểm" });
     const categoryName = student.category[0].name;
     const score =
       categoryName === "IELTS" ? (testScore / 12) * 9 : (testScore / 12) * 990;
