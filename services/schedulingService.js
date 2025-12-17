@@ -129,7 +129,7 @@ async function runAutoScheduler(jobId, io) {
 
     // Prefill lịch thật đã có từ Class.weeklySchedules để chặn xung đột
     await prefillExistingWeeklySchedules(ctx);
-
+    const dayMap = ["Chủ Nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
     const sortedClassList = greedySortClasses(virtualClassList);
     const totalCount = sortedClassList.length;
 
@@ -211,13 +211,15 @@ async function runAutoScheduler(jobId, io) {
             room: bestPlacement.room._id,
             violatesAvailability: bestPlacement.violatesAvailability,
           };
+
           if (bestPlacement.violatesAvailability) {
+            const dayName = dayMap[bestPlacement.day] || `Ngày ${bestPlacement.day}`;
             ctx.scheduleWarnings.push({
               classInfo: assignmentData.courseName,
               teacherName:
                 bestPlacement.teacher.profile.fullname ||
                 String(bestPlacement.teacher._id),
-              message: `Bị xếp vào ca ${bestPlacement.shift} (Ngày ${bestPlacement.day}) mà GV không đăng ký.`,
+              message: `Bị xếp vào ca ${bestPlacement.shift} (${dayName}) mà GV không đăng ký.`,
             });
           }
           return assignmentData;
@@ -604,8 +606,9 @@ async function loadResources(ctx) {
   ctx.allCategories = {};
   ctx.centerConfig = null;
   ctx.maxAvailableCapacity = 0;
+  ctx.validShiftsMap = {};
 
-  const teacherPromise = User.find({ role: "teacher" }).lean();
+  const teacherPromise = User.find({ role: "teacher",active: true }).lean();
   const roomPromise = Room.find({ status: "active" }).lean();
   const coursePromise = Course.find().populate("category").lean();
   const centerPromise = Center.findOne({ key: "default" }).lean();
@@ -619,14 +622,20 @@ async function loadResources(ctx) {
       centerPromise,
       categoryPromise,
     ]);
-
   ctx.allTeachers = teachers || [];
   ctx.allRooms = rooms || [];
   ctx.centerConfig = centerConfig || {};
+  const scheduleConfig = ctx.centerConfig.dayShifts || [];
+  if (Array.isArray(scheduleConfig) && scheduleConfig.length > 0) {
+    scheduleConfig.forEach((item) => {
+      ctx.validShiftsMap[String(item.dayOfWeek)] = item.shifts || [];
+    });
+  } else {
+    console.error("LỖI CẤU HÌNH: Không tìm thấy 'dayShifts'. Hệ thống sẽ KHÔNG xếp bất kỳ lịch nào.");
+  }
   ctx.maxAvailableCapacity = ctx.allRooms.length
     ? Math.max(...ctx.allRooms.map((r) => r.capacity || 0))
     : 0;
-
   ctx.allCourses = (coursesArray || []).reduce((acc, c) => {
     acc[String(c._id)] = c;
     return acc;
@@ -800,12 +809,12 @@ async function createVirtualClassList(ctx, { intakeStartDate, intakeEndDate }) {
 }
 function initializeScheduleState(ctx) {
   ctx.scheduleState = { teachers: {}, rooms: {} };
-  const days = ctx.centerConfig.activeDaysOfWeek;
-
+  // const days = ctx.centerConfig.activeDaysOfWeek;
+  const activeDays = Object.keys(ctx.validShiftsMap || {});
   for (const teacher of ctx.allTeachers) {
     const tid = String(teacher._id);
     ctx.scheduleState.teachers[tid] = {};
-    for (const day of days) {
+    for (const day of activeDays) {
       ctx.scheduleState.teachers[tid][day] = { workload: 0 };
       for (const shift of ctx.centerConfig.shifts) {
         ctx.scheduleState.teachers[tid][day][shift.name] = null;
@@ -816,7 +825,7 @@ function initializeScheduleState(ctx) {
   for (const room of ctx.allRooms) {
     const rid = String(room._id);
     ctx.scheduleState.rooms[rid] = {};
-    for (const day of days) {
+    for (const day of activeDays) {
       ctx.scheduleState.rooms[rid][day] = {};
       for (const shift of ctx.centerConfig.shifts) {
         ctx.scheduleState.rooms[rid][day][shift.name] = null;
@@ -896,7 +905,8 @@ function findPossiblePlacements(
 ) {
   const placements = [];
   const course = currentClass.courseInfo;
-  const days = ctx.centerConfig.activeDaysOfWeek;
+  // const days = ctx.centerConfig.activeDaysOfWeek;
+  const days = Object.keys(ctx.validShiftsMap || {}).map(Number);
   const shifts = ctx.centerConfig.shifts;
   let allSlotsTaken = true;
 
@@ -927,7 +937,12 @@ function findPossiblePlacements(
   }
 
   for (const day of days) {
+    const allowedShiftsForDay = ctx.validShiftsMap[String(day)] || [];
     for (const shift of shifts) {
+      // Nếu ca này không nằm trong Whitelist -> Bỏ qua ngay lập tức
+      if (!allowedShiftsForDay.includes(shift.name)) {
+        continue;
+      }
       // ca phải đủ dài cho duration
       if (shift.endMinute - shift.startMinute < course.durationInMinutes)
         continue;
