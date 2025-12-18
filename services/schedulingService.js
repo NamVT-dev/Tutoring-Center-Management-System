@@ -315,7 +315,7 @@ async function finalizeSchedule(jobId) {
 
   // Đọc lại config/courses để tính sessions
   const centerConfig = await Center.findOne({ key: "default" }).lean();
-  const timezone = centerConfig?.timezone || "Asia/Bangkok";
+  const timezone = centerConfig?.timezone || "Asia/Ho_Chi_Minh";
 
   let anchor = job.classStartAnchor
     ? moment.tz(job.classStartAnchor, timezone).startOf("day")
@@ -332,7 +332,7 @@ async function finalizeSchedule(jobId) {
   const existingByJob = await Class.findOne({ createdByJob: jobId }).lean();
   if (existingByJob) {
     throw new Error(
-      "Job này đã được finalize trước đó (phát hiện createdByJob)."
+      "Job này đã được finalize trước đó ."
     );
   }
 
@@ -460,9 +460,10 @@ async function finalizeSchedule(jobId) {
         const totalSessions = course.session;
         let sessionsCreatedCount = 0;
         let weekIndex = 0;
-
-        let baseStartDate = moment(newClass.startAt)
-          .tz(timezone)
+        //lấy mốc thời gian chính xác 
+        const classRealStartDate = moment(newClass.startAt).tz(timezone).startOf("day");
+        let baseStartDate = classRealStartDate
+          .clone()
           .startOf("week");
         while (sessionsCreatedCount < totalSessions) {
           const sortedSlots = newClass.weeklySchedules.sort(
@@ -476,8 +477,8 @@ async function finalizeSchedule(jobId) {
               .clone()
               .add(weekIndex, "weeks")
               .day(slot.dayOfWeek);
-            if (slotDate.isBefore(baseStartDate, "day")) {
-              slotDate.add(1, "weeks");
+            if (slotDate.isBefore(classRealStartDate, "day")) {
+              continue;
             }
 
             // KIỂM TRA NGÀY LỄ
