@@ -3,6 +3,7 @@ const AppError = require("../utils/appError");
 const Center = require("../models/centerModel");
 const schedulingService = require("../services/schedulingService");
 const ScheduleJob = require("../models/scheduleJobModel");
+const Enrollment = require("../models/enrollmentModel");
 const mongoose = require("mongoose");
 const { Teacher } = require("../models/userModel");
 const Session = require("../models/sessionModel");
@@ -203,12 +204,21 @@ exports.deleteScheduleJob = catchAsync(async (req, res, next) => {
       console.log(`[Rollback] Đang xóa dữ liệu của Job ${jobId}...`);
 
       const classesToDelete = await Class.find({ createdByJob: jobId })
-        .select("_id")
+        .select("_id startAt")
         .session(session);
 
       const classIds = classesToDelete.map((c) => c._id);
 
       if (classIds.length > 0) {
+        const hasEnrollment = await Enrollment.exists({
+          class:{ $in: classIds}
+        }).session(session)
+        if (hasEnrollment) {
+          throw new AppError(
+            "KHÔNG THỂ HỦY! Đã có học viên đăng ký vào các lớp học của lịch này. Vui lòng kiểm tra và xử lý các đăng ký trước.",
+            409
+          );
+        }
         await Teacher.updateMany(
           { class: { $in: classIds } },
           { $pull: { class: { $in: classIds } } },
