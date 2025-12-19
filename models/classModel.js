@@ -16,7 +16,7 @@ const oneOffScheduleSchema = new mongoose.Schema(
   {
     startAt: { type: Date, required: true }, // UTC
     endAt: { type: Date, required: true }, // UTC
-    timezone: { type: String, default: "Asia/Bangkok" },
+    timezone: { type: String, default: "Asia/Ho_Chi_Minh" },
     room: { type: mongoose.Schema.Types.ObjectId, ref: "Room" },
     teacher: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     reason: {

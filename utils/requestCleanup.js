@@ -5,8 +5,8 @@ const Session = require("../models/sessionModel");
 const moment = require("moment-timezone");
 const { createSystemNotification } = require("../utils/notification");
 
-const HOURS_AUTO_REJECT = 4;
-const HOURS_AUTO_APPROVE = 1;
+const HOURS_AUTO_REJECT = 12;
+const HOURS_AUTO_APPROVE = 6;
 
 const autoProcessRequestsJob = () => {
   cron.schedule("*/10 * * * *", async () => {
