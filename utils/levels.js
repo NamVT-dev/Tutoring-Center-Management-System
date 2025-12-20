@@ -22,14 +22,14 @@ const IELTS_RANGE = {
 };
 
 const TOEIC_RANGE = {
-  Starter: [0, 250],
-  Beginner: [255, 400],
-  Elementary: [405, 500],
-  "Pre-Intermediate": [505, 600],
-  Intermediate: [605, 780],
-  "Upper-Intermediate": [785, 900],
-  Advanced: [905, 950],
-  Expert: [955, 990],
+  Starter: [0, 249],
+  Beginner: [250, 399],
+  Elementary: [400, 499],
+  "Pre-Intermediate": [500, 599],
+  Intermediate: [600, 779],
+  "Upper-Intermediate": [780, 899],
+  Advanced: [900, 949],
+  Expert: [950, 990],
 };
 
 // =======================
