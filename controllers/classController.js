@@ -91,7 +91,7 @@ exports.listClasses = catchAsync(async (req, res, next) => {
     select:
       req.query.select ||
       "name classCode status course startAt endAt minStudent maxStudent weeklySchedules preferredTeacher createdAt",
-    sort: req.query.sort || "startAt",
+    sort: req.query.sort || { _id: -1 },
   });
 
   const includeSet = new Set(

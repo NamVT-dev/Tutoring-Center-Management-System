@@ -7,7 +7,7 @@ route.use(authController.protect);
 route.get("/", notificationController.getAllNotifications);
 route.get("/:id", notificationController.getOne);
 
-route.use(authController.restrictTo("admin"));
+route.use(authController.restrictTo("admin", "staff"));
 route.post("/", notificationController.createOne);
 route.patch("/:id", notificationController.updateOne);
 route.delete("/:id", notificationController.deleteOne);

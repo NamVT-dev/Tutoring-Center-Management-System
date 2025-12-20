@@ -6,7 +6,7 @@ const route = express.Router();
 route.use(authController.protect);
 route.get(
   "/requests/:id",
-  authController.restrictTo("teacher", "admin"),
+  authController.restrictTo("teacher", "admin", "staff"),
   SubstituteRequest.getOneRequest
 );
 route.delete(
@@ -26,12 +26,12 @@ route.patch(
 );
 route.patch(
   "/requests/:id/process",
-  authController.restrictTo("admin"),
+  authController.restrictTo("admin", "staff"),
   SubstituteRequest.adminProcessRequest
 );
 route.get(
   "/suggestions",
-  authController.restrictTo("admin", "teacher"),
+  authController.restrictTo("admin", "teacher", "staff"),
   SubstituteRequest.getSubstituteSuggestions
 );
 route.get(

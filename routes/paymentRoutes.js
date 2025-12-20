@@ -9,7 +9,7 @@ route.use(authController.protect);
 route.get("/my-payments", paymentController.getMyPayments);
 route.get("/:id", paymentController.getOneByMember);
 
-route.use(authController.restrictTo("admin"));
+route.use(authController.restrictTo("admin", "staff"));
 route.get("/refund-payment/:id", paymentController.refundPayment);
 
 module.exports = route;

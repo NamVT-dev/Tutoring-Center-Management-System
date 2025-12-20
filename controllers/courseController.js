@@ -56,8 +56,13 @@ const createCourse = catchAsync(async (req, res, next) => {
     category,
     level,
     session,
+    sessionsPerWeek,
     durationInMinutes,
     imageCover,
+    minScore: inputMinScore,
+    maxScore: inputMaxScore,
+    minStudent,
+    maxStudent,
   } = req.body;
   if (!name) return next(new AppError("Thiếu name", 400));
   if (!Number.isInteger(+session) || +session < 1)
@@ -74,8 +79,13 @@ const createCourse = catchAsync(async (req, res, next) => {
       category,
       level,
       session: +session,
+      sessionsPerWeek,
       durationInMinutes: +durationInMinutes,
       imageCover,
+      inputMinScore,
+      inputMaxScore,
+      minStudent,
+      maxStudent,
     });
     const course = await Course.findById(newCourse._id).populate("category");
     res.status(201).json({ status: "success", data: { course } });

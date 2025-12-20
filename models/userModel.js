@@ -39,6 +39,12 @@ const userSchema = new mongoose.Schema(
       fullname: {
         type: String,
         required: [true, "Xin hãy cung cấp tên của bạn"],
+        validate: {
+          validator: function (val) {
+            return val.length <= 50;
+          },
+          message: "Quá giới hạn số lượng kí tự",
+        },
       },
       photo: {
         type: String,
@@ -59,6 +65,12 @@ const userSchema = new mongoose.Schema(
       dob: {
         type: Date,
         required: [true, "Xin hãy cung cấp ngày sinh"],
+        validate: {
+          validator: function (val) {
+            return validator.isBefore(val.toLocaleString());
+          },
+          message: "Ngày sinh không hợp lệ",
+        },
       },
       gender: {
         type: String,

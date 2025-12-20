@@ -5,6 +5,8 @@ const { User, Teacher } = require("../models/userModel");
 const { generateRandomPassword } = require("../utils/passwordUtils");
 const Email = require("../utils/email");
 const factory = require("./handlerFactory");
+const Category = require("../models/categoryModel");
+const { LEVEL_ORDER } = require("../utils/levels");
 
 const getListTeacher = catchAsync(async (req, res) => {
   const { status, page = 1, limit = 10 } = req.query;
@@ -61,8 +63,19 @@ const getTeacherDetail = catchAsync(async (req, res, next) => {
   });
 });
 
-const createTeacher = catchAsync(async (req, res) => {
-  const { email, name, dob, phoneNumber, gender } = req.body;
+const createTeacher = catchAsync(async (req, res, next) => {
+  const { email, name, dob, phoneNumber, gender, skills } = req.body;
+  if (skills?.length > 0) {
+    await Promise.all(
+      skills.map(async (sk) => {
+        const category = await Category.findById(sk.category);
+        if (!category)
+          return next(new AppError("Không tìm thấy Category tương ứng!"));
+        if (sk.anyLevel && sk.levels.length === 0)
+          sk.levels = [LEVEL_ORDER.at(-1)];
+      })
+    );
+  }
   const tempPassword = generateRandomPassword();
   const teacher = await User.create({
     email,
@@ -73,6 +86,7 @@ const createTeacher = catchAsync(async (req, res) => {
       gender,
     },
     role: "teacher",
+    skills,
     password: tempPassword,
     passwordConfirm: tempPassword,
     active: true,
@@ -101,6 +115,18 @@ const createTeacher = catchAsync(async (req, res) => {
 const updateTeacher = catchAsync(async (req, res, next) => {
   const teacher = await Teacher.findById(req.params.id);
   if (!teacher) return next(new AppError("Không tìm thấy giáo viên", 404));
+
+  if (req.body.skills?.length > 0) {
+    await Promise.all(
+      req.body.skills.map(async (sk) => {
+        const category = await Category.findById(sk.category);
+        if (!category)
+          return next(new AppError("Không tìm thấy Category tương ứng!"));
+        if (sk.anyLevel && sk.levels.length === 0)
+          sk.levels = [LEVEL_ORDER.at(-1)];
+      })
+    );
+  }
   if (req.file) req.body.profile["photo"] = req.file.filename;
 
   // 3) Update user document

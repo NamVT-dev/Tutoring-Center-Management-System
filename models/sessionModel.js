@@ -55,16 +55,37 @@ const sessionSchema = new mongoose.Schema(
 );
 
 // Chống trùng GV/phòng theo thời gian: dùng query kiểm tra overlap trước khi insert
-sessionSchema.index({ teacher: 1, startAt: 1, endAt: 1 });
-sessionSchema.index({ room: 1, startAt: 1, endAt: 1 });
-sessionSchema.index({ class: 1, startAt: 1 });
+sessionSchema.index(
+  { teacher: 1, startAt: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { status: "scheduled" },
+  }
+);
+sessionSchema.index(
+  { room: 1, startAt: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { status: "scheduled" },
+  }
+);
+sessionSchema.index(
+  { class: 1, startAt: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { status: "scheduled" },
+  }
+);
 sessionSchema.index(
   { class: 1, sessionNo: 1 },
   { unique: true, partialFilterExpression: { sessionNo: { $exists: true } } }
 );
 
 sessionSchema.pre(/^find/, function (next) {
-  this.populate("class course teacher");
+  this.populate("class course").populate({
+    path: "teacher",
+    select: "-embedding",
+  });
   next();
 });
 

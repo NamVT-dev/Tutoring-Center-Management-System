@@ -127,10 +127,7 @@ const deleteRoom = catchAsync(async (req, res, next) => {
       });
     }
     return next(
-      new AppError(
-        "Phòng đang được sử dụng trong lịch học. Không thể xoá (dùng ?force=close).",
-        409
-      )
+      new AppError("Phòng đang hoặc sẽ được sử dụng trong lịch học.", 409)
     );
   }
 

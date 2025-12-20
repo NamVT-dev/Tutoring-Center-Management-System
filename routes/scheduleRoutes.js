@@ -4,7 +4,7 @@ const authController = require("../controllers/authController");
 
 const router = express.Router();
 
-router.use(authController.protect, authController.restrictTo("admin"));
+router.use(authController.protect, authController.restrictTo("admin", "staff"));
 
 // --- API TÁC VỤ (JOB) ---
 // Chạy thuật toán

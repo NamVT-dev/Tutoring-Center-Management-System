@@ -33,6 +33,7 @@ exports.aiResponse = async (question, fact) => {
     ],
     temperature: 0.6,
   });
+  console.log(response.choices[0]);
   return response.choices[0].message.content;
 };
 
@@ -129,7 +130,6 @@ exports.generateTeacherEmbeddingText = (teacher) => {
   if (!teacher) return "";
 
   const name = teacher.profile?.fullname || "";
-  const overallLevel = teacher.level || "";
   const description = teacher.description || "";
 
   // Count number of classes taught
@@ -153,7 +153,6 @@ exports.generateTeacherEmbeddingText = (teacher) => {
 
   return (
     `Teacher Name: ${name}\n` +
-    `Overall Level: ${overallLevel}\n\n` +
     `Teaching Description:\n${description}\n\n` +
     `Teaching Skills:\n${skillsText || "None"}\n\n` +
     `Teaching Experience:\n` +

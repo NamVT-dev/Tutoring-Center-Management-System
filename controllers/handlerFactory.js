@@ -98,15 +98,30 @@ exports.getAll = (Model, searchTerm) =>
   });
 
 exports.createMany = (Model) =>
-  catchAsync(async (req, res) => {
-    const results = [];
-    for (let i = 0; i < req.body.length; i++) {
-      const doc = await Model.create(req.body[i]);
-      results.push(doc);
-    }
+  catchAsync(async (req, res, next) => {
+    const session = await Model.startSession();
+    session.startTransaction();
 
-    res.status(201).json({
-      status: "success",
-      data: results,
-    });
+    try {
+      const results = [];
+
+      for (let i = 0; i < req.body.length; i++) {
+        const doc = await Model.create([req.body[i]], { session });
+        results.push(doc[0]);
+      }
+
+      await session.commitTransaction();
+      session.endSession();
+
+      res.status(201).json({
+        status: "success",
+        results: results.length,
+        data: results,
+      });
+    } catch (err) {
+      await session.abortTransaction();
+      session.endSession();
+
+      return next(new AppError(err.message, 400));
+    }
   });
