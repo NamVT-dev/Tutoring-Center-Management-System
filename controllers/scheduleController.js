@@ -167,7 +167,7 @@ exports.getScheduleJob = catchAsync(async (req, res, next) => {
 
 exports.getAllScheduleJobs = catchAsync(async (req, res) => {
   // Lấy lịch sử 20 job gần nhất
-  const jobs = await ScheduleJob.find({ admin: req.user.id })
+  const jobs = await ScheduleJob.find()
     .sort("-createdAt")
     .limit(20)
     .select("status createdAt resultReport logs intakeStartDate");
@@ -211,8 +211,8 @@ exports.deleteScheduleJob = catchAsync(async (req, res, next) => {
 
       if (classIds.length > 0) {
         const hasEnrollment = await Enrollment.exists({
-          class:{ $in: classIds}
-        }).session(session)
+          class: { $in: classIds },
+        }).session(session);
         if (hasEnrollment) {
           throw new AppError(
             "KHÔNG THỂ HỦY! Đã có học viên đăng ký vào các lớp học của lịch này. Vui lòng kiểm tra và xử lý các đăng ký trước.",

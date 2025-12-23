@@ -60,15 +60,16 @@ route.patch("/session/:id", sessionCtrl.updateSession);
 
 route.patch("/deactive-account/:id", authCtrl.deactiveAccount);
 
+route.get("/student-demand", dashboardCtrl.getStudentDemandReport);
+route.get("/center/config", centerCtrl.getConfig);
+
 route.use(authCtrl.restrictTo("admin"));
 
 //dashboard
 route.get("/reports/revenue", dashboardCtrl.getRevenueReport);
 route.get("/dashboard", dashboardCtrl.getDashboardOverview);
-route.get("/student-demand", dashboardCtrl.getStudentDemandReport);
 
 //quan ly center
-route.get("/center/config", centerCtrl.getConfig);
 route.patch("/center/config", centerCtrl.updateConfig);
 route.patch("/center/isOpen", centerCtrl.availabilityRegistration);
 //quan ly staff

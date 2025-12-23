@@ -26,9 +26,9 @@ const findNewLeads = (startDate, endDate) => {
     .lean();
 };
 
-const findWaitingStudents = async (startDate) => {
+const findWaitingStudents = async (endDate) => {
   const finishedClasses = await Class.find({
-    endAt: { $lt: startDate },
+    endAt: { $lt: endDate },
     status: { $ne: "canceled" },
   })
     .select("_id")
@@ -39,7 +39,7 @@ const findWaitingStudents = async (startDate) => {
 
   const completedEnrollments = await Enrollment.find({
     class: { $in: finishedClassIds },
-    status: "confirmed",
+    status: "waitlisted",
   })
     .select("student")
     .lean();
@@ -59,8 +59,8 @@ const findWaitingStudents = async (startDate) => {
 
   const waitingStudents = waitlist.filter((student) => {
     const categoryName = student.category[0]?.name;
-    if (!categoryName || !student.level) return false;
-    const currentLevel = mapScoreToLevel(student.level, categoryName);
+    if (!categoryName) return false;
+    const currentLevel = mapScoreToLevel(student.testScore, categoryName);
     const currentLevelIndex = LEVEL_INDEX[currentLevel];
     const goalLevelIndex = LEVEL_INDEX[student.learningGoal.targetScore];
     return goalLevelIndex > currentLevelIndex;
@@ -87,7 +87,7 @@ exports.getStudentDemandReport = catchAsync(async (req, res, next) => {
 
   const [newLeads, waitingStudents] = await Promise.all([
     findNewLeads(start, end),
-    findWaitingStudents(start),
+    findWaitingStudents(end),
   ]);
 
   res.status(200).json({
